@@ -111,6 +111,7 @@
     import { getFirestore, collection, addDoc, query, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Firebase Configuration
+    // __firebase_config가 환경에서 제공되면 사용하고, 그렇지 않으면 기본값을 사용합니다.
     let firebaseConfig;
     try {
         firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
@@ -164,7 +165,7 @@
     const gameOverScreen = document.getElementById('game-over-screen');
     const leaderboardList = document.getElementById('leaderboard-list');
 
-    // Handle Auth with Retry logic
+    // Handle Auth with Exponential Backoff retry logic
     const login = async (retries = 5, delay = 1000) => {
         try {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -174,20 +175,23 @@
             }
         } catch (error) {
             if (retries > 0) {
+                // Exponential Backoff
                 setTimeout(() => login(retries - 1, delay * 2), delay);
             } else {
                 console.error("Auth failed finally:", error);
-                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs">서버 연결에 실패했습니다.</p>`;
+                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs font-bold">인증 실패: API Key를 확인하세요.</p>`;
             }
         }
     };
 
     onAuthStateChanged(auth, (u) => {
         user = u;
-        if (user) loadLeaderboard();
+        if (user) {
+            loadLeaderboard();
+        }
     });
 
-    // Real-time Leaderboard Sync
+    // Real-time Leaderboard Sync (Rule 1 & 2)
     function loadLeaderboard() {
         if (!user) return;
         const q = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
@@ -196,7 +200,10 @@
             snapshot.forEach(doc => rankings.push(doc.data()));
             rankings.sort((a, b) => b.score - a.score);
             updateLeaderboardUI(rankings.slice(0, 5));
-        }, (err) => console.error("Ranking error:", err));
+        }, (err) => {
+            console.error("Ranking fetch error:", err);
+            leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs">데이터 로드 실패</p>`;
+        });
     }
 
     function updateLeaderboardUI(data) {
@@ -225,7 +232,11 @@
     };
 
     function startGame() {
-        if (!user) return;
+        // Auth Check (Rule 3)
+        if (!user) {
+            console.error("Authentication required to start.");
+            return;
+        }
         score = 0;
         lives = 3;
         gameActive = true;
@@ -329,8 +340,10 @@
         document.getElementById('final-score-display').innerText = `최종 점수: ${score}`;
         gameOverScreen.classList.remove('hidden');
         
+        // Final score check & Save (Rule 3 guard)
         if (user && score > 0) {
             try {
+                // Rule 1 Path
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rankings'), {
                     nickname: nickname,
                     score: score,
@@ -340,7 +353,7 @@
                 document.getElementById('save-status').innerText = "기록이 등록되었습니다!";
             } catch (e) {
                 console.error("Save error:", e);
-                document.getElementById('save-status').innerText = "기록 저장 중 오류가 발생했습니다.";
+                document.getElementById('save-status').innerText = "기록 저장 실패 (네트워크/권한 확인)";
             }
         }
 
@@ -348,6 +361,7 @@
         words.forEach(w => w.remove());
     }
 
+    // Start Login Process
     login();
 </script>
 
