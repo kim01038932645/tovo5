@@ -103,7 +103,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, onSnapshot, limit, enableNetwork, disableNetwork } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Firebase Configuration
     let firebaseConfig;
@@ -155,7 +155,7 @@
     const leaderboardList = document.getElementById('leaderboard-list');
     const startBtn = document.getElementById('start-btn');
 
-    // Login with error handling and retry
+    // Authentication Logic
     const login = async (retries = 5, delay = 1000) => {
         try {
             startBtn.disabled = true;
@@ -164,39 +164,32 @@
             } else {
                 await signInAnonymously(auth);
             }
-            console.log("Authenticated successfully");
             startBtn.disabled = false;
         } catch (error) {
-            console.error(`Auth Error: ${error.code}`, error.message);
             if (retries > 0) {
                 setTimeout(() => login(retries - 1, delay * 2), delay);
             } else {
-                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs font-bold">서버 연결 실패. 인터넷 연결이나 API 설정을 확인하세요.</p>`;
+                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs font-bold">서버 연결 실패</p>`;
             }
         }
     };
 
     onAuthStateChanged(auth, (u) => {
         user = u;
-        if (user) {
-            loadLeaderboard();
-        }
+        if (user) loadLeaderboard();
     });
 
     function loadLeaderboard() {
         if (!user) return;
-        // Strict Path Rule 1
         const rankingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
-        
         onSnapshot(rankingsCol, (snapshot) => {
             let rankings = [];
             snapshot.forEach(doc => rankings.push(doc.data()));
-            // Rule 2: Sort in memory
             rankings.sort((a, b) => b.score - a.score);
             updateLeaderboardUI(rankings.slice(0, 5));
         }, (err) => {
             console.error("Firestore error:", err);
-            leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-[10px]">데이터 로딩 중 오류 발생. Firestore 규칙을 확인하세요.</p>`;
+            leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-[10px]">랭킹 로딩 실패</p>`;
         });
     }
 
@@ -219,10 +212,6 @@
             document.getElementById('nickname').classList.add('border-red-500');
             return;
         }
-        if (!user) {
-            login(); // 유저가 없을 경우 재시도
-            return;
-        }
         nickname = inputName;
         document.getElementById('user-display').innerText = nickname;
         startGame();
@@ -243,7 +232,7 @@
         if (!gameActive) return;
         const data = wordList[Math.floor(Math.random() * wordList.length)];
         const container = document.createElement('div');
-        container.className = 'word-bubble flex flex-col items-center group';
+        container.className = 'word-bubble flex flex-col items-center';
         const posX = Math.random() * (window.innerWidth - 200) + 50;
         container.style.left = `${posX}px`;
         container.style.top = `-180px`;
@@ -257,7 +246,7 @@
         buttonsContainer.className = 'bg-slate-700 p-2 rounded-b-xl border-2 border-blue-400 shadow-xl space-y-1 w-44';
         data.meanings.forEach((m, idx) => {
             const btn = document.createElement('button');
-            btn.className = 'w-full text-xs py-2 px-2 bg-slate-600 hover:bg-blue-500 text-white rounded transition-colors pointer-events-auto';
+            btn.className = 'w-full text-xs py-2 px-2 bg-slate-600 hover:bg-blue-500 text-white rounded transition-colors';
             btn.innerText = m;
             btn.onclick = (e) => {
                 e.stopPropagation();
@@ -326,10 +315,9 @@
                     timestamp: Date.now(),
                     userId: user.uid
                 });
-                document.getElementById('save-status').innerText = "기록이 성공적으로 저장되었습니다!";
+                document.getElementById('save-status').innerText = "기록이 저장되었습니다!";
             } catch (e) {
-                console.error("Save Error:", e);
-                document.getElementById('save-status').innerText = "기록 저장 실패. Firestore 규칙을 확인하세요.";
+                document.getElementById('save-status').innerText = "기록 저장 실패";
             }
         }
         document.querySelectorAll('.word-bubble').forEach(w => w.remove());
