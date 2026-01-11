@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEIC Word Defender - Leaderboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap');
+        
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .word-bubble {
+            position: absolute;
+            transition: transform 0.1s linear;
+            cursor: pointer;
+            user-select: none;
+            z-index: 10;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .leaderboard-item:last-child { border-bottom: none; }
+        
+        /* Correct answer animation */
+        .correct-flash {
+            animation: flash 0.3s ease-out;
+        }
+        @keyframes flash {
+            0% { background-color: #2563eb; }
+            50% { background-color: #10b981; transform: scale(1.1); }
+            100% { background-color: #2563eb; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- Game UI Overlay -->
+    <div id="ui-layer" class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 pointer-events-none opacity-0 transition-opacity">
+        <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white pointer-events-auto">
+            <div id="user-display" class="text-xs font-bold text-blue-400 mb-1 italic">GUEST</div>
+            <div class="text-[10px] opacity-70 uppercase tracking-widest">Score</div>
+            <div id="score" class="text-2xl font-bold">0</div>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white text-right pointer-events-auto">
+            <div class="text-xs opacity-70 uppercase tracking-widest">Lives</div>
+            <div id="lives" class="text-2xl font-bold text-red-400">❤️❤️❤️</div>
+        </div>
+    </div>
+
+    <!-- Initial Start/Nickname Screen -->
+    <div id="start-screen" class="z-50 text-center p-8 bg-slate-800/90 backdrop-blur-lg rounded-3xl border-2 border-blue-500 shadow-2xl w-full max-w-sm mx-4">
+        <h1 class="text-4xl font-extrabold text-white mb-2">TOEIC Defender</h1>
+        <p class="text-blue-300 mb-6 text-sm">닉네임을 입력하고 순위에 도전하세요!</p>
+        
+        <input type="text" id="nickname" placeholder="닉네임 입력 (최대 8자)" maxlength="8"
+               class="w-full px-4 py-3 rounded-xl bg-slate-700 text-white border border-slate-600 focus:outline-none focus:border-blue-500 mb-4 text-center">
+        
+        <button id="start-btn" class="w-full px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-lg mb-6">
+            게임 시작하기
+        </button>
+
+        <div class="text-left border-t border-slate-700 pt-4">
+            <h3 class="text-white font-bold mb-3 flex items-center gap-2">
+                🏆 실시간 Top 5
+            </h3>
+            <div id="leaderboard-list" class="space-y-1 text-sm text-slate-300">
+                <p class="text-center py-2 opacity-50">순위 데이터를 불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final Game Over Screen -->
+    <div id="game-over-screen" class="hidden z-50 text-center p-8 bg-slate-900/95 backdrop-blur-lg rounded-3xl border-2 border-red-500 shadow-2xl w-full max-w-sm mx-4">
+        <h1 class="text-4xl font-extrabold text-white mb-2">GAME OVER</h1>
+        <p id="final-score-display" class="text-2xl text-yellow-400 mb-2 font-bold">0</p>
+        <p id="save-status" class="text-blue-300 mb-6 text-xs italic">순위 데이터 저장 중...</p>
+        
+        <button onclick="location.reload()" class="w-full px-8 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-lg">
+            다시 도전하기
+        </button>
+    </div>
+
+    <!-- Falling Words Stage -->
+    <div id="stage" class="absolute inset-0 overflow-hidden"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase Configuration
+    let firebaseConfig;
+    try {
+        firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyD-Yrrs6bM6e-7rH74tfjJmhfhvm4Af9Wg",
+            authDomain: "toeic-vaca-5.firebaseapp.com",
+            databaseURL: "https://toeic-vaca-5-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "toeic-vaca-5",
+            storageBucket: "toeic-vaca-5.firebasestorage.app",
+            messagingSenderId: "73640394276",
+            appId: "1:73640394276:web:6bec2125251952017862b1"
+        };
+    } catch (e) {
+        console.error("Firebase config parse error", e);
+    }
+
+    // Initialize Firebase Services
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'toeic-word-shooter-v1';
+
+    const wordList = [
+        { word: 'Approximate', meanings: ['대략의', '정확한', '오래된'], correct: 0 },
+        { word: 'Implement', meanings: ['무시하다', '시행하다', '도착하다'], correct: 1 },
+        { word: 'Acquisition', meanings: ['인수/획득', '거절', '조사'], correct: 0 },
+        { word: 'Reliable', meanings: ['위험한', '지루한', '믿을만한'], correct: 2 },
+        { word: 'Perspective', meanings: ['관점/시각', '도구', '결과'], correct: 0 },
+        { word: 'Collaborate', meanings: ['경쟁하다', '협력하다', '축하하다'], correct: 1 },
+        { word: 'Requirement', meanings: ['보상', '자격요건', '변명'], correct: 1 },
+        { word: 'Significant', meanings: ['사소한', '상당한/중요한', '어두운'], correct: 1 },
+        { word: 'Substantial', meanings: ['실질적인/상당한', '얇은', '가상의'], correct: 0 },
+        { word: 'Feasible', meanings: ['불가능한', '지루한', '실행 가능한'], correct: 2 },
+        { word: 'Preliminary', meanings: ['최종의', '예비의', '전문적인'], correct: 1 },
+        { word: 'Incentive', meanings: ['장려금', '벌금', '영수증'], correct: 0 },
+        { word: 'Compliance', meanings: ['위반', '준수', '불평'], correct: 1 },
+        { word: 'Mandatory', meanings: ['의무적인', '선택적인', '우연한'], correct: 0 },
+        { word: 'Optimize', meanings: ['포기하다', '최적화하다', '관찰하다'], correct: 1 }
+    ];
+
+    let score = 0;
+    let lives = 3;
+    let gameActive = false;
+    let user = null;
+    let nickname = "";
+    let spawnInterval;
+
+    const stage = document.getElementById('stage');
+    const scoreEl = document.getElementById('score');
+    const livesEl = document.getElementById('lives');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const leaderboardList = document.getElementById('leaderboard-list');
+
+    // Handle Auth with Retry logic
+    const login = async (retries = 5, delay = 1000) => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (error) {
+            if (retries > 0) {
+                setTimeout(() => login(retries - 1, delay * 2), delay);
+            } else {
+                console.error("Auth failed finally:", error);
+                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs">서버 연결에 실패했습니다.</p>`;
+            }
+        }
+    };
+
+    onAuthStateChanged(auth, (u) => {
+        user = u;
+        if (user) loadLeaderboard();
+    });
+
+    // Real-time Leaderboard Sync
+    function loadLeaderboard() {
+        if (!user) return;
+        const q = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
+        onSnapshot(q, (snapshot) => {
+            let rankings = [];
+            snapshot.forEach(doc => rankings.push(doc.data()));
+            rankings.sort((a, b) => b.score - a.score);
+            updateLeaderboardUI(rankings.slice(0, 5));
+        }, (err) => console.error("Ranking error:", err));
+    }
+
+    function updateLeaderboardUI(data) {
+        if (data.length === 0) {
+            leaderboardList.innerHTML = `<p class="text-center py-2 opacity-50">첫 번째 랭커가 되어보세요!</p>`;
+            return;
+        }
+        leaderboardList.innerHTML = data.map((item, idx) => `
+            <div class="leaderboard-item">
+                <span class="${idx === 0 ? 'text-yellow-400 font-bold' : ''}">${idx + 1}. ${item.nickname}</span>
+                <span class="font-mono">${item.score}</span>
+            </div>
+        `).join('');
+    }
+
+    // Start Button Handler
+    document.getElementById('start-btn').onclick = () => {
+        const inputName = document.getElementById('nickname').value.trim();
+        if (!inputName) {
+            document.getElementById('nickname').classList.add('border-red-500');
+            return;
+        }
+        nickname = inputName;
+        document.getElementById('user-display').innerText = nickname;
+        startGame();
+    };
+
+    function startGame() {
+        if (!user) return;
+        score = 0;
+        lives = 3;
+        gameActive = true;
+        updateUI();
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        document.getElementById('ui-layer').classList.replace('opacity-0', 'opacity-100');
+        spawnInterval = setInterval(spawnWord, 1800);
+    }
+
+    function spawnWord() {
+        if (!gameActive) return;
+
+        const data = wordList[Math.floor(Math.random() * wordList.length)];
+        const container = document.createElement('div');
+        container.className = 'word-bubble flex flex-col items-center group';
+        
+        const posX = Math.random() * (window.innerWidth - 200) + 50;
+        container.style.left = `${posX}px`;
+        container.style.top = `-180px`;
+
+        const wordHeader = document.createElement('div');
+        wordHeader.className = 'bg-blue-600 text-white px-4 py-2 rounded-t-xl font-bold shadow-lg border-x-2 border-t-2 border-blue-400 w-full text-center transition-colors';
+        wordHeader.innerText = data.word;
+        container.appendChild(wordHeader);
+
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.className = 'bg-slate-700 p-2 rounded-b-xl border-2 border-blue-400 shadow-xl space-y-1 w-44';
+        
+        data.meanings.forEach((m, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'w-full text-xs py-2 px-2 bg-slate-600 hover:bg-blue-500 text-white rounded transition-colors';
+            btn.innerText = m;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                checkAnswer(idx === data.correct, container);
+            };
+            buttonsContainer.appendChild(btn);
+        });
+        
+        container.appendChild(buttonsContainer);
+        stage.appendChild(container);
+
+        let currentY = -180;
+        const speed = 1.2 + (score / 150);
+        
+        const fall = setInterval(() => {
+            if (!gameActive) {
+                clearInterval(fall);
+                return;
+            }
+            currentY += speed;
+            container.style.top = `${currentY}px`;
+
+            if (currentY > window.innerHeight) {
+                clearInterval(fall);
+                if (container.parentNode) {
+                    loseLife();
+                    container.remove();
+                }
+            }
+        }, 20);
+
+        container.dataset.fallInterval = fall;
+    }
+
+    function checkAnswer(isCorrect, element) {
+        if (!gameActive) return;
+
+        if (isCorrect) {
+            score += 10;
+            element.classList.add('scale-110', 'opacity-0');
+            element.style.transition = 'all 0.3s ease-out';
+            setTimeout(() => {
+                clearInterval(element.dataset.fallInterval);
+                if(element.parentNode) element.remove();
+            }, 300);
+        } else {
+            loseLife();
+            const header = element.querySelector('div');
+            header.classList.replace('bg-blue-600', 'bg-red-600');
+            header.classList.replace('border-blue-400', 'border-red-400');
+        }
+        updateUI();
+    }
+
+    function loseLife() {
+        lives--;
+        updateUI();
+        if (lives <= 0) endGame();
+    }
+
+    function updateUI() {
+        scoreEl.innerText = score;
+        livesEl.innerText = '❤️'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, 3 - lives));
+    }
+
+    async function endGame() {
+        gameActive = false;
+        clearInterval(spawnInterval);
+        document.getElementById('final-score-display').innerText = `최종 점수: ${score}`;
+        gameOverScreen.classList.remove('hidden');
+        
+        if (user && score > 0) {
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rankings'), {
+                    nickname: nickname,
+                    score: score,
+                    timestamp: Date.now(),
+                    userId: user.uid
+                });
+                document.getElementById('save-status').innerText = "기록이 등록되었습니다!";
+            } catch (e) {
+                console.error("Save error:", e);
+                document.getElementById('save-status').innerText = "기록 저장 중 오류가 발생했습니다.";
+            }
+        }
+
+        const words = document.querySelectorAll('.word-bubble');
+        words.forEach(w => w.remove());
+    }
+
+    login();
+</script>
+
+</body>
+</html>
