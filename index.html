@@ -41,10 +41,6 @@
 
         .leaderboard-item:last-child { border-bottom: none; }
         
-        /* Correct answer animation */
-        .correct-flash {
-            animation: flash 0.3s ease-out;
-        }
         @keyframes flash {
             0% { background-color: #2563eb; }
             50% { background-color: #10b981; transform: scale(1.1); }
@@ -55,7 +51,7 @@
 <body>
 
 <div id="game-container">
-    <!-- Game UI Overlay -->
+    <!-- UI Layer -->
     <div id="ui-layer" class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 pointer-events-none opacity-0 transition-opacity">
         <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white pointer-events-auto">
             <div id="user-display" class="text-xs font-bold text-blue-400 mb-1 italic">GUEST</div>
@@ -68,7 +64,7 @@
         </div>
     </div>
 
-    <!-- Initial Start/Nickname Screen -->
+    <!-- Start Screen -->
     <div id="start-screen" class="z-50 text-center p-8 bg-slate-800/90 backdrop-blur-lg rounded-3xl border-2 border-blue-500 shadow-2xl w-full max-w-sm mx-4">
         <h1 class="text-4xl font-extrabold text-white mb-2">TOEIC Defender</h1>
         <p class="text-blue-300 mb-6 text-sm">닉네임을 입력하고 순위에 도전하세요!</p>
@@ -76,7 +72,7 @@
         <input type="text" id="nickname" placeholder="닉네임 입력 (최대 8자)" maxlength="8"
                class="w-full px-4 py-3 rounded-xl bg-slate-700 text-white border border-slate-600 focus:outline-none focus:border-blue-500 mb-4 text-center">
         
-        <button id="start-btn" class="w-full px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-lg mb-6">
+        <button id="start-btn" class="w-full px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-lg mb-6 disabled:opacity-50 disabled:cursor-not-allowed">
             게임 시작하기
         </button>
 
@@ -85,12 +81,12 @@
                 🏆 실시간 Top 5
             </h3>
             <div id="leaderboard-list" class="space-y-1 text-sm text-slate-300">
-                <p class="text-center py-2 opacity-50">순위 데이터를 불러오는 중...</p>
+                <p class="text-center py-2 opacity-50">서버 연결 시도 중...</p>
             </div>
         </div>
     </div>
 
-    <!-- Final Game Over Screen -->
+    <!-- Game Over Screen -->
     <div id="game-over-screen" class="hidden z-50 text-center p-8 bg-slate-900/95 backdrop-blur-lg rounded-3xl border-2 border-red-500 shadow-2xl w-full max-w-sm mx-4">
         <h1 class="text-4xl font-extrabold text-white mb-2">GAME OVER</h1>
         <p id="final-score-display" class="text-2xl text-yellow-400 mb-2 font-bold">0</p>
@@ -101,17 +97,15 @@
         </button>
     </div>
 
-    <!-- Falling Words Stage -->
     <div id="stage" class="absolute inset-0 overflow-hidden"></div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, onSnapshot, limit, enableNetwork, disableNetwork } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Firebase Configuration
-    // __firebase_config가 환경에서 제공되면 사용하고, 그렇지 않으면 기본값을 사용합니다.
     let firebaseConfig;
     try {
         firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
@@ -127,7 +121,7 @@
         console.error("Firebase config parse error", e);
     }
 
-    // Initialize Firebase Services
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -143,12 +137,7 @@
         { word: 'Requirement', meanings: ['보상', '자격요건', '변명'], correct: 1 },
         { word: 'Significant', meanings: ['사소한', '상당한/중요한', '어두운'], correct: 1 },
         { word: 'Substantial', meanings: ['실질적인/상당한', '얇은', '가상의'], correct: 0 },
-        { word: 'Feasible', meanings: ['불가능한', '지루한', '실행 가능한'], correct: 2 },
-        { word: 'Preliminary', meanings: ['최종의', '예비의', '전문적인'], correct: 1 },
-        { word: 'Incentive', meanings: ['장려금', '벌금', '영수증'], correct: 0 },
-        { word: 'Compliance', meanings: ['위반', '준수', '불평'], correct: 1 },
-        { word: 'Mandatory', meanings: ['의무적인', '선택적인', '우연한'], correct: 0 },
-        { word: 'Optimize', meanings: ['포기하다', '최적화하다', '관찰하다'], correct: 1 }
+        { word: 'Feasible', meanings: ['불가능한', '지루한', '실행 가능한'], correct: 2 }
     ];
 
     let score = 0;
@@ -164,22 +153,25 @@
     const startScreen = document.getElementById('start-screen');
     const gameOverScreen = document.getElementById('game-over-screen');
     const leaderboardList = document.getElementById('leaderboard-list');
+    const startBtn = document.getElementById('start-btn');
 
-    // Handle Auth with Exponential Backoff retry logic
+    // Login with error handling and retry
     const login = async (retries = 5, delay = 1000) => {
         try {
+            startBtn.disabled = true;
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token);
             } else {
                 await signInAnonymously(auth);
             }
+            console.log("Authenticated successfully");
+            startBtn.disabled = false;
         } catch (error) {
+            console.error(`Auth Error: ${error.code}`, error.message);
             if (retries > 0) {
-                // Exponential Backoff
                 setTimeout(() => login(retries - 1, delay * 2), delay);
             } else {
-                console.error("Auth failed finally:", error);
-                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs font-bold">인증 실패: API Key를 확인하세요.</p>`;
+                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs font-bold">서버 연결 실패. 인터넷 연결이나 API 설정을 확인하세요.</p>`;
             }
         }
     };
@@ -191,24 +183,26 @@
         }
     });
 
-    // Real-time Leaderboard Sync (Rule 1 & 2)
     function loadLeaderboard() {
         if (!user) return;
-        const q = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
-        onSnapshot(q, (snapshot) => {
+        // Strict Path Rule 1
+        const rankingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
+        
+        onSnapshot(rankingsCol, (snapshot) => {
             let rankings = [];
             snapshot.forEach(doc => rankings.push(doc.data()));
+            // Rule 2: Sort in memory
             rankings.sort((a, b) => b.score - a.score);
             updateLeaderboardUI(rankings.slice(0, 5));
         }, (err) => {
-            console.error("Ranking fetch error:", err);
-            leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs">데이터 로드 실패</p>`;
+            console.error("Firestore error:", err);
+            leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-[10px]">데이터 로딩 중 오류 발생. Firestore 규칙을 확인하세요.</p>`;
         });
     }
 
     function updateLeaderboardUI(data) {
         if (data.length === 0) {
-            leaderboardList.innerHTML = `<p class="text-center py-2 opacity-50">첫 번째 랭커가 되어보세요!</p>`;
+            leaderboardList.innerHTML = `<p class="text-center py-2 opacity-50">랭킹 기록이 없습니다.</p>`;
             return;
         }
         leaderboardList.innerHTML = data.map((item, idx) => `
@@ -219,11 +213,14 @@
         `).join('');
     }
 
-    // Start Button Handler
-    document.getElementById('start-btn').onclick = () => {
+    startBtn.onclick = () => {
         const inputName = document.getElementById('nickname').value.trim();
         if (!inputName) {
             document.getElementById('nickname').classList.add('border-red-500');
+            return;
+        }
+        if (!user) {
+            login(); // 유저가 없을 경우 재시도
             return;
         }
         nickname = inputName;
@@ -232,11 +229,6 @@
     };
 
     function startGame() {
-        // Auth Check (Rule 3)
-        if (!user) {
-            console.error("Authentication required to start.");
-            return;
-        }
         score = 0;
         lives = 3;
         gameActive = true;
@@ -249,11 +241,9 @@
 
     function spawnWord() {
         if (!gameActive) return;
-
         const data = wordList[Math.floor(Math.random() * wordList.length)];
         const container = document.createElement('div');
         container.className = 'word-bubble flex flex-col items-center group';
-        
         const posX = Math.random() * (window.innerWidth - 200) + 50;
         container.style.left = `${posX}px`;
         container.style.top = `-180px`;
@@ -265,10 +255,9 @@
 
         const buttonsContainer = document.createElement('div');
         buttonsContainer.className = 'bg-slate-700 p-2 rounded-b-xl border-2 border-blue-400 shadow-xl space-y-1 w-44';
-        
         data.meanings.forEach((m, idx) => {
             const btn = document.createElement('button');
-            btn.className = 'w-full text-xs py-2 px-2 bg-slate-600 hover:bg-blue-500 text-white rounded transition-colors';
+            btn.className = 'w-full text-xs py-2 px-2 bg-slate-600 hover:bg-blue-500 text-white rounded transition-colors pointer-events-auto';
             btn.innerText = m;
             btn.onclick = (e) => {
                 e.stopPropagation();
@@ -282,30 +271,20 @@
 
         let currentY = -180;
         const speed = 1.2 + (score / 150);
-        
         const fall = setInterval(() => {
-            if (!gameActive) {
-                clearInterval(fall);
-                return;
-            }
+            if (!gameActive) { clearInterval(fall); return; }
             currentY += speed;
             container.style.top = `${currentY}px`;
-
             if (currentY > window.innerHeight) {
                 clearInterval(fall);
-                if (container.parentNode) {
-                    loseLife();
-                    container.remove();
-                }
+                if (container.parentNode) { loseLife(); container.remove(); }
             }
         }, 20);
-
         container.dataset.fallInterval = fall;
     }
 
     function checkAnswer(isCorrect, element) {
         if (!gameActive) return;
-
         if (isCorrect) {
             score += 10;
             element.classList.add('scale-110', 'opacity-0');
@@ -318,7 +297,6 @@
             loseLife();
             const header = element.querySelector('div');
             header.classList.replace('bg-blue-600', 'bg-red-600');
-            header.classList.replace('border-blue-400', 'border-red-400');
         }
         updateUI();
     }
@@ -340,28 +318,23 @@
         document.getElementById('final-score-display').innerText = `최종 점수: ${score}`;
         gameOverScreen.classList.remove('hidden');
         
-        // Final score check & Save (Rule 3 guard)
         if (user && score > 0) {
             try {
-                // Rule 1 Path
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rankings'), {
                     nickname: nickname,
                     score: score,
                     timestamp: Date.now(),
                     userId: user.uid
                 });
-                document.getElementById('save-status').innerText = "기록이 등록되었습니다!";
+                document.getElementById('save-status').innerText = "기록이 성공적으로 저장되었습니다!";
             } catch (e) {
-                console.error("Save error:", e);
-                document.getElementById('save-status').innerText = "기록 저장 실패 (네트워크/권한 확인)";
+                console.error("Save Error:", e);
+                document.getElementById('save-status').innerText = "기록 저장 실패. Firestore 규칙을 확인하세요.";
             }
         }
-
-        const words = document.querySelectorAll('.word-bubble');
-        words.forEach(w => w.remove());
+        document.querySelectorAll('.word-bubble').forEach(w => w.remove());
     }
 
-    // Start Login Process
     login();
 </script>
 
