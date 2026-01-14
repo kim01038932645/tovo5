@@ -2,328 +2,328 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TOEIC Word Defender - Leaderboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SRT D조 출석부</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap');
-        
-        body {
-            font-family: 'Nanum Gothic', sans-serif;
-            overflow: hidden;
-            background-color: #0f172a;
-        }
-
-        #game-container {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .word-bubble {
-            position: absolute;
-            transition: transform 0.1s linear;
-            cursor: pointer;
-            user-select: none;
-            z-index: 10;
-        }
-
-        .leaderboard-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .leaderboard-item:last-child { border-bottom: none; }
-        
-        @keyframes flash {
-            0% { background-color: #2563eb; }
-            50% { background-color: #10b981; transform: scale(1.1); }
-            100% { background-color: #2563eb; }
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .calendar-cell { min-height: 70px; transition: background-color 0.2s; position: relative; }
+        .calendar-cell:active { background-color: #f3f4f6; }
+        .today-highlight { border: 2px solid #3b82f6 !important; background-color: #eff6ff !important; }
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        /* Prevent bounce on mobile */
+        html, body { overscroll-behavior-y: contain; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-900">
 
-<div id="game-container">
-    <!-- UI Layer -->
-    <div id="ui-layer" class="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 pointer-events-none opacity-0 transition-opacity">
-        <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white pointer-events-auto">
-            <div id="user-display" class="text-xs font-bold text-blue-400 mb-1 italic">GUEST</div>
-            <div class="text-[10px] opacity-70 uppercase tracking-widest">Score</div>
-            <div id="score" class="text-2xl font-bold">0</div>
-        </div>
-        <div class="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/20 text-white text-right pointer-events-auto">
-            <div class="text-xs opacity-70 uppercase tracking-widest">Lives</div>
-            <div id="lives" class="text-2xl font-bold text-red-400">❤️❤️❤️</div>
-        </div>
-    </div>
-
-    <!-- Start Screen -->
-    <div id="start-screen" class="z-50 text-center p-8 bg-slate-800/90 backdrop-blur-lg rounded-3xl border-2 border-blue-500 shadow-2xl w-full max-w-sm mx-4">
-        <h1 class="text-4xl font-extrabold text-white mb-2">TOEIC Defender</h1>
-        <p class="text-blue-300 mb-6 text-sm">닉네임을 입력하고 순위에 도전하세요!</p>
-        
-        <input type="text" id="nickname" placeholder="닉네임 입력 (최대 8자)" maxlength="8"
-               class="w-full px-4 py-3 rounded-xl bg-slate-700 text-white border border-slate-600 focus:outline-none focus:border-blue-500 mb-4 text-center">
-        
-        <button id="start-btn" class="w-full px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-lg mb-6 disabled:opacity-50 disabled:cursor-not-allowed">
-            게임 시작하기
-        </button>
-
-        <div class="text-left border-t border-slate-700 pt-4">
-            <h3 class="text-white font-bold mb-3 flex items-center gap-2">
-                🏆 실시간 Top 5
-            </h3>
-            <div id="leaderboard-list" class="space-y-1 text-sm text-slate-300">
-                <p class="text-center py-2 opacity-50">서버 연결 시도 중...</p>
+<div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
+        <div class="flex justify-between items-start mb-3">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-xl font-bold text-white">🏃‍♂️ SRT D조 출석부</h1>
+                    <div id="statusIndicator" class="w-2.5 h-2.5 rounded-full bg-gray-400 border border-white"></div>
+                </div>
+                <div id="personal-summary" class="text-[11px] mt-1 font-medium opacity-90 hidden">
+                    <span class="bg-blue-700 px-2 py-0.5 rounded-full mr-1">이번 달: <span id="my-month-dist">0.0</span>km</span>
+                    <span class="bg-blue-700 px-2 py-0.5 rounded-full">출석: <span id="my-month-attend">0</span>회</span>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="flex items-center gap-2">
+            <select id="userSelect" class="bg-blue-700 text-white text-sm rounded-lg p-2.5 outline-none border-none flex-grow appearance-none cursor-pointer">
+                <option value="">본인 이름을 선택하세요</option>
+            </select>
+        </div>
+    </header>
 
-    <!-- Game Over Screen -->
-    <div id="game-over-screen" class="hidden z-50 text-center p-8 bg-slate-900/95 backdrop-blur-lg rounded-3xl border-2 border-red-500 shadow-2xl w-full max-w-sm mx-4">
-        <h1 class="text-4xl font-extrabold text-white mb-2">GAME OVER</h1>
-        <p id="final-score-display" class="text-2xl text-yellow-400 mb-2 font-bold">0</p>
-        <p id="save-status" class="text-blue-300 mb-6 text-xs italic">순위 데이터 저장 중...</p>
-        
-        <button onclick="location.reload()" class="w-full px-8 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all transform hover:scale-105 active:scale-95 shadow-lg">
-            다시 도전하기
-        </button>
-    </div>
+    <main class="flex-grow p-4 space-y-6 overflow-y-auto pb-24">
+        <div id="monthNav" class="flex justify-between items-center bg-blue-50 p-2 rounded-xl">
+            <button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-black text-xl active:scale-95 transition-transform">◀</button>
+            <span id="displayMonth" class="text-lg font-black text-blue-900">2026년 1월</span>
+            <button onclick="changeMonth(1)" class="p-2 text-blue-600 font-black text-xl active:scale-95 transition-transform">▶</button>
+        </div>
 
-    <div id="stage" class="absolute inset-0 overflow-hidden"></div>
+        <!-- Calendar Section -->
+        <div id="section-calendar" class="space-y-4">
+            <div class="grid grid-cols-7 text-center text-xs font-bold text-gray-400 mb-2">
+                <div class="text-red-500 font-bold uppercase">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-600 font-bold uppercase">Sat</div>
+            </div>
+            <div id="calendar-days" class="grid grid-cols-7 gap-1.5"></div>
+        </div>
+
+        <!-- Ranking Section -->
+        <div id="section-rankings" class="pt-6 border-t-2 border-dashed border-gray-100 space-y-8">
+            <div>
+                <h2 class="text-lg font-black text-blue-900 mb-4 flex items-center gap-2">🔥 누적 거리 TOP 5</h2>
+                <div id="ranking-distance" class="space-y-2"></div>
+            </div>
+            <div>
+                <h2 class="text-lg font-black text-green-700 mb-4 flex items-center gap-2">✅ 공식 출석 TOP 5</h2>
+                <div id="ranking-attendance" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Form Modal -->
+        <div id="entry-form" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl transform transition-all">
+                <h3 id="form-date-title" class="text-xl font-black mb-6 text-center text-gray-800">날짜 기록</h3>
+                <div id="attendance-box" class="mb-5 hidden">
+                    <label class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl cursor-pointer border-2 border-transparent hover:border-blue-200 transition-all">
+                        <span class="font-bold text-blue-900 text-sm">공식 모임 출석</span>
+                        <input type="checkbox" id="attend-check" class="w-6 h-6 rounded-full accent-blue-600">
+                    </label>
+                </div>
+                <div class="mb-8 text-center">
+                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">러닝 거리 (km)</label>
+                    <input type="number" id="distance-input" step="0.1" inputmode="decimal" placeholder="0.0" 
+                           class="w-full text-4xl font-black text-center text-blue-600 border-b-4 border-gray-100 focus:border-blue-500 py-2 outline-none bg-transparent">
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="closeForm()" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold active:bg-gray-200 transition-colors">취소</button>
+                    <button id="saveBtn" onclick="saveRecord()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">저장</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="p-6 bg-gray-50 text-[10px] text-gray-400 text-center border-t">
+        SRT D-Team Performance Tracker<br>
+        <span id="dbStatus">연결 확인 중...</span>
+    </footer>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, onSnapshot, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, collection, onSnapshot, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Firebase Configuration
-    let firebaseConfig;
-    try {
-        firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyD-Yrrs6bM6e-7rH74tfjJmhfhvm4Af9Wg",
-            authDomain: "toeic-vaca-5.firebaseapp.com",
-            databaseURL: "https://toeic-vaca-5-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "toeic-vaca-5",
-            storageBucket: "toeic-vaca-5.firebasestorage.app",
-            messagingSenderId: "73640394276",
-            appId: "1:73640394276:web:6bec2125251952017862b1"
-        };
-    } catch (e) {
-        console.error("Firebase config parse error", e);
-    }
+    // GitHub 업로드 시에도 안전하도록 환경 변수 핸들링 강화
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+        apiKey: "AIza...", // 로컬 테스트용 직접 입력 시 여기에
+        authDomain: "toeic-vaca-5.firebaseapp.com",
+        projectId: "toeic-vaca-5",
+        storageBucket: "toeic-vaca-5.firebasestorage.app",
+        messagingSenderId: "73640394276",
+        appId: "1:73640394276:web:6bec2125251952017862b1"
+    };
 
-    // Initialize Firebase
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-prod';
+    const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'toeic-word-shooter-v1';
 
-    const wordList = [
-        { word: 'Approximate', meanings: ['대략의', '정확한', '오래된'], correct: 0 },
-        { word: 'Implement', meanings: ['무시하다', '시행하다', '도착하다'], correct: 1 },
-        { word: 'Acquisition', meanings: ['인수/획득', '거절', '조사'], correct: 0 },
-        { word: 'Reliable', meanings: ['위험한', '지루한', '믿을만한'], correct: 2 },
-        { word: 'Perspective', meanings: ['관점/시각', '도구', '결과'], correct: 0 },
-        { word: 'Collaborate', meanings: ['경쟁하다', '협력하다', '축하하다'], correct: 1 },
-        { word: 'Requirement', meanings: ['보상', '자격요건', '변명'], correct: 1 },
-        { word: 'Significant', meanings: ['사소한', '상당한/중요한', '어두운'], correct: 1 },
-        { word: 'Substantial', meanings: ['실질적인/상당한', '얇은', '가상의'], correct: 0 },
-        { word: 'Feasible', meanings: ['불가능한', '지루한', '실행 가능한'], correct: 2 }
-    ];
+    const members = ["강동현", "강동훈", "송채한", "김미화", "김재산", "김찬석", "김한나", "류지찬", "박성환", "박종봉", "소병득", "서정화", "신영섭", "안지훈", "오한천", "이승준", "이용구", "정덕수", "주효석", "서인수", "박창선", "김병식"].sort();
+    
+    const today = new Date();
+    let currentViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    let allRecords = [];
 
-    let score = 0;
-    let lives = 3;
-    let gameActive = false;
-    let user = null;
-    let nickname = "";
-    let spawnInterval;
-
-    const stage = document.getElementById('stage');
-    const scoreEl = document.getElementById('score');
-    const livesEl = document.getElementById('lives');
-    const startScreen = document.getElementById('start-screen');
-    const gameOverScreen = document.getElementById('game-over-screen');
-    const leaderboardList = document.getElementById('leaderboard-list');
-    const startBtn = document.getElementById('start-btn');
-
-    // Authentication Logic
-    const login = async (retries = 5, delay = 1000) => {
+    // 인증 함수 (GitHub Pages 등 외부 호스팅 시에도 대응)
+    const initAuth = async () => {
         try {
-            startBtn.disabled = true;
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
+            if (initialToken) {
+                await signInWithCustomToken(auth, initialToken);
             } else {
                 await signInAnonymously(auth);
             }
-            startBtn.disabled = false;
         } catch (error) {
-            if (retries > 0) {
-                setTimeout(() => login(retries - 1, delay * 2), delay);
-            } else {
-                leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-xs font-bold">서버 연결 실패</p>`;
-            }
+            console.error("Auth Failure:", error);
+            document.getElementById('dbStatus').textContent = "인증 실패 (익명 로그인을 활성화하세요)";
         }
     };
 
-    onAuthStateChanged(auth, (u) => {
-        user = u;
-        if (user) loadLeaderboard();
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('dbStatus').textContent = "연결 완료";
+            document.getElementById('statusIndicator').className = "w-2.5 h-2.5 rounded-full bg-green-500 border border-white";
+            startSync();
+        }
     });
 
-    function loadLeaderboard() {
-        if (!user) return;
-        const rankingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'rankings');
-        onSnapshot(rankingsCol, (snapshot) => {
-            let rankings = [];
-            snapshot.forEach(doc => rankings.push(doc.data()));
-            rankings.sort((a, b) => b.score - a.score);
-            updateLeaderboardUI(rankings.slice(0, 5));
+    function startSync() {
+        const q = collection(db, 'artifacts', appId, 'public', 'data', 'records');
+        onSnapshot(q, (snapshot) => {
+            allRecords = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            updateUI();
         }, (err) => {
-            console.error("Firestore error:", err);
-            leaderboardList.innerHTML = `<p class="text-center py-2 text-red-400 text-[10px]">랭킹 로딩 실패</p>`;
+            console.error("Firestore Error:", err);
+            document.getElementById('dbStatus').textContent = "데이터 연동 권한 없음";
         });
-    }
-
-    function updateLeaderboardUI(data) {
-        if (data.length === 0) {
-            leaderboardList.innerHTML = `<p class="text-center py-2 opacity-50">랭킹 기록이 없습니다.</p>`;
-            return;
-        }
-        leaderboardList.innerHTML = data.map((item, idx) => `
-            <div class="leaderboard-item">
-                <span class="${idx === 0 ? 'text-yellow-400 font-bold' : ''}">${idx + 1}. ${item.nickname}</span>
-                <span class="font-mono">${item.score}</span>
-            </div>
-        `).join('');
-    }
-
-    startBtn.onclick = () => {
-        const inputName = document.getElementById('nickname').value.trim();
-        if (!inputName) {
-            document.getElementById('nickname').classList.add('border-red-500');
-            return;
-        }
-        nickname = inputName;
-        document.getElementById('user-display').innerText = nickname;
-        startGame();
-    };
-
-    function startGame() {
-        score = 0;
-        lives = 3;
-        gameActive = true;
-        updateUI();
-        startScreen.classList.add('hidden');
-        gameOverScreen.classList.add('hidden');
-        document.getElementById('ui-layer').classList.replace('opacity-0', 'opacity-100');
-        spawnInterval = setInterval(spawnWord, 1800);
-    }
-
-    function spawnWord() {
-        if (!gameActive) return;
-        const data = wordList[Math.floor(Math.random() * wordList.length)];
-        const container = document.createElement('div');
-        container.className = 'word-bubble flex flex-col items-center';
-        const posX = Math.random() * (window.innerWidth - 200) + 50;
-        container.style.left = `${posX}px`;
-        container.style.top = `-180px`;
-
-        const wordHeader = document.createElement('div');
-        wordHeader.className = 'bg-blue-600 text-white px-4 py-2 rounded-t-xl font-bold shadow-lg border-x-2 border-t-2 border-blue-400 w-full text-center transition-colors';
-        wordHeader.innerText = data.word;
-        container.appendChild(wordHeader);
-
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.className = 'bg-slate-700 p-2 rounded-b-xl border-2 border-blue-400 shadow-xl space-y-1 w-44';
-        data.meanings.forEach((m, idx) => {
-            const btn = document.createElement('button');
-            btn.className = 'w-full text-xs py-2 px-2 bg-slate-600 hover:bg-blue-500 text-white rounded transition-colors';
-            btn.innerText = m;
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                checkAnswer(idx === data.correct, container);
-            };
-            buttonsContainer.appendChild(btn);
-        });
-        
-        container.appendChild(buttonsContainer);
-        stage.appendChild(container);
-
-        let currentY = -180;
-        const speed = 1.2 + (score / 150);
-        const fall = setInterval(() => {
-            if (!gameActive) { clearInterval(fall); return; }
-            currentY += speed;
-            container.style.top = `${currentY}px`;
-            if (currentY > window.innerHeight) {
-                clearInterval(fall);
-                if (container.parentNode) { loseLife(); container.remove(); }
-            }
-        }, 20);
-        container.dataset.fallInterval = fall;
-    }
-
-    function checkAnswer(isCorrect, element) {
-        if (!gameActive) return;
-        if (isCorrect) {
-            score += 10;
-            element.classList.add('scale-110', 'opacity-0');
-            element.style.transition = 'all 0.3s ease-out';
-            setTimeout(() => {
-                clearInterval(element.dataset.fallInterval);
-                if(element.parentNode) element.remove();
-            }, 300);
-        } else {
-            loseLife();
-            const header = element.querySelector('div');
-            header.classList.replace('bg-blue-600', 'bg-red-600');
-        }
-        updateUI();
-    }
-
-    function loseLife() {
-        lives--;
-        updateUI();
-        if (lives <= 0) endGame();
     }
 
     function updateUI() {
-        scoreEl.innerText = score;
-        livesEl.innerText = '❤️'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, 3 - lives));
+        renderCalendar();
+        renderRanking();
+        updatePersonalSummary();
     }
 
-    async function endGame() {
-        gameActive = false;
-        clearInterval(spawnInterval);
-        document.getElementById('final-score-display').innerText = `최종 점수: ${score}`;
-        gameOverScreen.classList.remove('hidden');
+    const userSelect = document.getElementById('userSelect');
+    members.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name; opt.textContent = name;
+        userSelect.appendChild(opt);
+    });
+
+    window.changeMonth = (dir) => {
+        currentViewDate.setMonth(currentViewDate.getMonth() + dir);
+        updateUI();
+    };
+
+    function renderCalendar() {
+        const year = currentViewDate.getFullYear();
+        const month = currentViewDate.getMonth();
+        document.getElementById('displayMonth').textContent = `${year}년 ${month + 1}월`;
         
-        if (user && score > 0) {
-            try {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rankings'), {
-                    nickname: nickname,
-                    score: score,
-                    timestamp: Date.now(),
-                    userId: user.uid
-                });
-                document.getElementById('save-status').innerText = "기록이 저장되었습니다!";
-            } catch (e) {
-                document.getElementById('save-status').innerText = "기록 저장 실패";
-            }
+        const firstDay = new Date(year, month, 1).getDay();
+        const lastDate = new Date(year, month + 1, 0).getDate();
+        const container = document.getElementById('calendar-days');
+        container.innerHTML = "";
+
+        for (let i = 0; i < firstDay; i++) {
+            const empty = document.createElement('div');
+            container.appendChild(empty);
         }
-        document.querySelectorAll('.word-bubble').forEach(w => w.remove());
+
+        const userName = userSelect.value;
+        const monthPrefix = `${year}-${String(month+1).padStart(2,'0')}`;
+        const monthRecords = allRecords.filter(r => r.date.startsWith(monthPrefix));
+
+        for (let d = 1; d <= lastDate; d++) {
+            const dateStr = `${monthPrefix}-${String(d).padStart(2,'0')}`;
+            const dateObj = new Date(year, month, d);
+            const isWedSun = dateObj.getDay() === 3 || dateObj.getDay() === 0;
+            const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate());
+            
+            const cell = document.createElement('div');
+            cell.className = `calendar-cell border rounded-xl p-1 text-center flex flex-col justify-between cursor-pointer active:scale-95 transition-all ${isWedSun ? 'bg-orange-50 border-orange-100' : 'bg-white border-gray-100'} ${isToday ? 'today-highlight shadow-inner' : ''}`;
+            cell.onclick = () => openForm(dateStr, isWedSun);
+
+            const dayNum = document.createElement('span');
+            dayNum.className = `text-[10px] font-black ${dateObj.getDay() === 0 ? 'text-red-500' : dateObj.getDay() === 6 ? 'text-blue-600' : 'text-gray-400'}`;
+            dayNum.textContent = d;
+
+            const content = document.createElement('div');
+            content.className = "flex flex-col items-center gap-0.5 mb-1";
+            
+            const dateData = monthRecords.filter(r => r.date === dateStr);
+            if (userName) {
+                const myRec = dateData.find(r => r.name === userName);
+                if (myRec) {
+                    if (myRec.attended) content.innerHTML += `<div class="text-[12px] animate-bounce">✅</div>`;
+                    if (myRec.distance > 0) content.innerHTML += `<div class="text-[9px] font-black text-gray-800 bg-yellow-100 px-1 rounded">${myRec.distance}k</div>`;
+                }
+            } else {
+                const totalDist = dateData.reduce((a, b) => a + (Number(b.distance) || 0), 0);
+                const totalAttend = dateData.filter(r => r.attended).length;
+                if (totalDist > 0) content.innerHTML += `<div class="text-[8px] font-bold text-blue-500">Σ${totalDist.toFixed(1)}</div>`;
+                if (totalAttend > 0) content.innerHTML += `<div class="text-[8px] font-bold text-green-600">👤${totalAttend}</div>`;
+            }
+
+            cell.appendChild(dayNum);
+            cell.appendChild(content);
+            container.appendChild(cell);
+        }
     }
 
-    login();
+    function renderRanking() {
+        const prefix = `${currentViewDate.getFullYear()}-${String(currentViewDate.getMonth() + 1).padStart(2, '0')}`;
+        const distStats = {};
+        const attendStats = {};
+        members.forEach(m => { distStats[m] = 0; attendStats[m] = 0; });
+
+        allRecords.forEach(r => {
+            if (r.date.startsWith(prefix)) {
+                distStats[r.name] += (Number(r.distance) || 0);
+                if (r.attended) attendStats[r.name] += 1;
+            }
+        });
+
+        const sortedDist = Object.entries(distStats).sort((a, b) => b[1] - a[1]).filter(x => x[1] > 0).slice(0, 5);
+        const distContainer = document.getElementById('ranking-distance');
+        distContainer.innerHTML = sortedDist.length === 0 ? `<div class="text-xs text-gray-300 italic text-center p-4">기록이 없습니다.</div>` : "";
+        sortedDist.forEach(([name, val], i) => distContainer.appendChild(createRankItem(i, name, val.toFixed(1) + ' km', 'blue')));
+
+        const sortedAttend = Object.entries(attendStats).sort((a, b) => b[1] - a[1]).filter(x => x[1] > 0).slice(0, 5);
+        const attendContainer = document.getElementById('ranking-attendance');
+        attendContainer.innerHTML = sortedAttend.length === 0 ? `<div class="text-xs text-gray-300 italic text-center p-4">기록이 없습니다.</div>` : "";
+        sortedAttend.forEach(([name, val], i) => attendContainer.appendChild(createRankItem(i, name, val + ' 회', 'green')));
+    }
+
+    function createRankItem(i, name, valueText, color) {
+        const item = document.createElement('div');
+        const colorClass = color === 'blue' ? 'from-blue-500 to-blue-600' : 'from-green-500 to-green-600';
+        const rankBg = i === 0 ? `bg-gradient-to-r ${colorClass} text-white shadow-lg` : 'bg-white text-gray-700 border border-gray-100';
+        item.className = `flex items-center p-3.5 rounded-2xl ${rankBg} transition-transform hover:scale-[1.02]`;
+        item.innerHTML = `<span class="w-8 font-black text-sm">${i+1}</span><span class="flex-grow font-bold text-sm">${name}</span><span class="font-black text-sm text-right">${valueText}</span>`;
+        return item;
+    }
+
+    function updatePersonalSummary() {
+        const userName = userSelect.value;
+        if (!userName) { document.getElementById('personal-summary').classList.add('hidden'); return; }
+        const prefix = `${currentViewDate.getFullYear()}-${String(currentViewDate.getMonth() + 1).padStart(2, '0')}`;
+        const myMonthRecords = allRecords.filter(r => r.name === userName && r.date.startsWith(prefix));
+        document.getElementById('my-month-dist').textContent = myMonthRecords.reduce((acc, cur) => acc + (Number(cur.distance) || 0), 0).toFixed(1);
+        document.getElementById('my-month-attend').textContent = myMonthRecords.filter(r => r.attended).length;
+        document.getElementById('personal-summary').classList.remove('hidden');
+    }
+
+    let selectedDate = "";
+    window.openForm = (date, isSpecial) => {
+        if (!userSelect.value) {
+            alert("이름을 먼저 선택해 주세요.");
+            userSelect.focus();
+            return;
+        }
+        selectedDate = date;
+        const [y, m, d] = date.split('-');
+        document.getElementById('form-date-title').textContent = `${parseInt(m)}월 ${parseInt(d)}일 기록`;
+        document.getElementById('attendance-box').classList.toggle('hidden', !isSpecial);
+        const rec = allRecords.find(r => r.date === date && r.name === userSelect.value);
+        document.getElementById('attend-check').checked = rec?.attended || false;
+        document.getElementById('distance-input').value = rec?.distance || "";
+        document.getElementById('entry-form').classList.remove('hidden');
+    };
+
+    window.closeForm = () => document.getElementById('entry-form').classList.add('hidden');
+
+    window.saveRecord = async () => {
+        if (!auth.currentUser) return alert("데이터베이스 연결 중입니다.");
+        
+        const name = userSelect.value;
+        const dist = parseFloat(document.getElementById('distance-input').value) || 0;
+        const attended = document.getElementById('attend-check').checked;
+        const docId = `${name}_${selectedDate}`;
+        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'records', docId);
+
+        try {
+            if (dist === 0 && !attended) {
+                await deleteDoc(ref);
+            } else {
+                await setDoc(ref, { 
+                    name, 
+                    date: selectedDate, 
+                    distance: dist, 
+                    attended, 
+                    updatedAt: Date.now() 
+                });
+            }
+            closeForm();
+        } catch (e) {
+            console.error("Save Error:", e);
+            alert("저장 실패! 본인의 데이터만 수정 가능한지 또는 Firebase 규칙을 확인해 보세요.");
+        }
+    };
+
+    userSelect.onchange = () => updateUI();
+    initAuth();
 </script>
 
 </body>
