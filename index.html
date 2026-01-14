@@ -99,19 +99,11 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, collection, onSnapshot, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // GitHub 업로드 시에도 안전하도록 환경 변수 핸들링 강화
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-        apiKey: "AIza...", // 로컬 테스트용 직접 입력 시 여기에
-        authDomain: "toeic-vaca-5.firebaseapp.com",
-        projectId: "toeic-vaca-5",
-        storageBucket: "toeic-vaca-5.firebasestorage.app",
-        messagingSenderId: "73640394276",
-        appId: "1:73640394276:web:6bec2125251952017862b1"
-    };
-
+    // Firebase configuration using provided environment variables
+    const firebaseConfig = JSON.parse(__firebase_config);
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-prod';
     const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -125,17 +117,18 @@
     let currentViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
     let allRecords = [];
 
-    // 인증 함수 (GitHub Pages 등 외부 호스팅 시에도 대응)
+    // Authentication optimized for Canvas environment (No Anonymous login)
     const initAuth = async () => {
         try {
             if (initialToken) {
                 await signInWithCustomToken(auth, initialToken);
             } else {
-                await signInAnonymously(auth);
+                console.warn("No authentication token provided.");
+                document.getElementById('dbStatus').textContent = "인증 토큰 없음 (접근 제한)";
             }
         } catch (error) {
             console.error("Auth Failure:", error);
-            document.getElementById('dbStatus').textContent = "인증 실패 (익명 로그인을 활성화하세요)";
+            document.getElementById('dbStatus').textContent = "인증 실패: " + error.message;
         }
     };
 
@@ -144,6 +137,8 @@
             document.getElementById('dbStatus').textContent = "연결 완료";
             document.getElementById('statusIndicator').className = "w-2.5 h-2.5 rounded-full bg-green-500 border border-white";
             startSync();
+        } else {
+            document.getElementById('statusIndicator').className = "w-2.5 h-2.5 rounded-full bg-red-500 border border-white";
         }
     });
 
@@ -154,7 +149,7 @@
             updateUI();
         }, (err) => {
             console.error("Firestore Error:", err);
-            document.getElementById('dbStatus').textContent = "데이터 연동 권한 없음";
+            document.getElementById('dbStatus').textContent = "데이터 동기화 실패";
         });
     }
 
@@ -295,7 +290,7 @@
     window.closeForm = () => document.getElementById('entry-form').classList.add('hidden');
 
     window.saveRecord = async () => {
-        if (!auth.currentUser) return alert("데이터베이스 연결 중입니다.");
+        if (!auth.currentUser) return alert("사용자 인증 정보가 없습니다.");
         
         const name = userSelect.value;
         const dist = parseFloat(document.getElementById('distance-input').value) || 0;
@@ -318,7 +313,7 @@
             closeForm();
         } catch (e) {
             console.error("Save Error:", e);
-            alert("저장 실패! 본인의 데이터만 수정 가능한지 또는 Firebase 규칙을 확인해 보세요.");
+            alert("기록 저장 중 오류가 발생했습니다. 권한을 확인하세요.");
         }
     };
 
