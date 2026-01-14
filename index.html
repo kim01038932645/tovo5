@@ -9,103 +9,97 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .calendar-cell { min-height: 70px; transition: background-color 0.2s; position: relative; }
+        .calendar-cell { min-height: 75px; transition: background-color 0.2s; position: relative; border-radius: 12px; }
         .calendar-cell:active { background-color: #f3f4f6; }
         .today-highlight { border: 2px solid #3b82f6 !important; background-color: #eff6ff !important; }
         ::-webkit-scrollbar { width: 0px; background: transparent; }
-        /* Prevent bounce on mobile */
         html, body { overscroll-behavior-y: contain; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
 
 <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
-    <!-- Header -->
-    <header class="bg-blue-600 text-white p-4 sticky top-0 z-50 shadow-md">
-        <div class="flex justify-between items-start mb-3">
-            <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="text-xl font-bold text-white">🏃‍♂️ SRT D조 출석부</h1>
-                    <div id="statusIndicator" class="w-2.5 h-2.5 rounded-full bg-gray-400 border border-white"></div>
-                </div>
-                <div id="personal-summary" class="text-[11px] mt-1 font-medium opacity-90 hidden">
-                    <span class="bg-blue-700 px-2 py-0.5 rounded-full mr-1">이번 달: <span id="my-month-dist">0.0</span>km</span>
-                    <span class="bg-blue-700 px-2 py-0.5 rounded-full">출석: <span id="my-month-attend">0</span>회</span>
-                </div>
+    <!-- 상단 헤더 -->
+    <header class="bg-blue-600 text-white p-5 sticky top-0 z-50 shadow-md">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+                <h1 class="text-xl font-bold">🏃‍♂️ SRT D조 출석부</h1>
+                <div id="statusIndicator" class="w-3 h-3 rounded-full bg-gray-400 border-2 border-white transition-colors duration-500"></div>
+            </div>
+            <div id="personal-summary" class="text-[11px] font-bold opacity-90 hidden bg-blue-700 px-3 py-1 rounded-full">
+                이번 달: <span id="my-month-dist">0.0</span>km / <span id="my-month-attend">0</span>회
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <select id="userSelect" class="bg-blue-700 text-white text-sm rounded-lg p-2.5 outline-none border-none flex-grow appearance-none cursor-pointer">
-                <option value="">본인 이름을 선택하세요</option>
-            </select>
-        </div>
+        <select id="userSelect" class="w-full bg-blue-700 text-white text-sm rounded-xl p-3 outline-none border-none appearance-none cursor-pointer font-bold">
+            <option value="">본인 이름을 선택하세요</option>
+        </select>
     </header>
 
     <main class="flex-grow p-4 space-y-6 overflow-y-auto pb-24">
-        <div id="monthNav" class="flex justify-between items-center bg-blue-50 p-2 rounded-xl">
-            <button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-black text-xl active:scale-95 transition-transform">◀</button>
+        <!-- 월 이동 내비게이션 -->
+        <div class="flex justify-between items-center bg-blue-50 p-3 rounded-2xl">
+            <button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-black text-xl active:scale-90 transition-transform">◀</button>
             <span id="displayMonth" class="text-lg font-black text-blue-900">2026년 1월</span>
-            <button onclick="changeMonth(1)" class="p-2 text-blue-600 font-black text-xl active:scale-95 transition-transform">▶</button>
+            <button onclick="changeMonth(1)" class="p-2 text-blue-600 font-black text-xl active:scale-90 transition-transform">▶</button>
         </div>
 
-        <!-- Calendar Section -->
+        <!-- 달력 영역 -->
         <div id="section-calendar" class="space-y-4">
-            <div class="grid grid-cols-7 text-center text-xs font-bold text-gray-400 mb-2">
-                <div class="text-red-500 font-bold uppercase">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-600 font-bold uppercase">Sat</div>
+            <div class="grid grid-cols-7 text-center text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                <div class="text-red-500">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-600">Sat</div>
             </div>
-            <div id="calendar-days" class="grid grid-cols-7 gap-1.5"></div>
+            <div id="calendar-days" class="grid grid-cols-7 gap-2"></div>
         </div>
 
-        <!-- Ranking Section -->
-        <div id="section-rankings" class="pt-6 border-t-2 border-dashed border-gray-100 space-y-8">
+        <!-- 랭킹 영역 -->
+        <div class="pt-6 border-t-2 border-dashed border-gray-100 space-y-8">
             <div>
-                <h2 class="text-lg font-black text-blue-900 mb-4 flex items-center gap-2">🔥 누적 거리 TOP 5</h2>
+                <h2 class="text-lg font-black text-blue-900 mb-4 flex items-center gap-2">🔥 누적 거리 TOP 5 (이번 달)</h2>
                 <div id="ranking-distance" class="space-y-2"></div>
             </div>
             <div>
-                <h2 class="text-lg font-black text-green-700 mb-4 flex items-center gap-2">✅ 공식 출석 TOP 5</h2>
+                <h2 class="text-lg font-black text-green-700 mb-4 flex items-center gap-2">✅ 공식 출석 TOP 5 (이번 달)</h2>
                 <div id="ranking-attendance" class="space-y-2"></div>
             </div>
         </div>
 
-        <!-- Form Modal -->
+        <!-- 입력 팝업 모달 -->
         <div id="entry-form" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-            <div class="bg-white rounded-3xl p-6 w-full max-w-xs shadow-2xl transform transition-all">
+            <div class="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl">
                 <h3 id="form-date-title" class="text-xl font-black mb-6 text-center text-gray-800">날짜 기록</h3>
-                <div id="attendance-box" class="mb-5 hidden">
-                    <label class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl cursor-pointer border-2 border-transparent hover:border-blue-200 transition-all">
-                        <span class="font-bold text-blue-900 text-sm">공식 모임 출석</span>
+                <div id="attendance-box" class="mb-6 hidden">
+                    <label class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl cursor-pointer border-2 border-transparent active:border-blue-300">
+                        <span class="font-bold text-blue-900">공식 모임 출석</span>
                         <input type="checkbox" id="attend-check" class="w-6 h-6 rounded-full accent-blue-600">
                     </label>
                 </div>
                 <div class="mb-8 text-center">
                     <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">러닝 거리 (km)</label>
                     <input type="number" id="distance-input" step="0.1" inputmode="decimal" placeholder="0.0" 
-                           class="w-full text-4xl font-black text-center text-blue-600 border-b-4 border-gray-100 focus:border-blue-500 py-2 outline-none bg-transparent">
+                           class="w-full text-5xl font-black text-center text-blue-600 border-b-4 border-gray-100 focus:border-blue-500 py-2 outline-none bg-transparent">
                 </div>
                 <div class="flex gap-3">
-                    <button onclick="closeForm()" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold active:bg-gray-200 transition-colors">취소</button>
-                    <button id="saveBtn" onclick="saveRecord()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">저장</button>
+                    <button onclick="closeForm()" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold">취소</button>
+                    <button onclick="saveRecord()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">저장</button>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer class="p-6 bg-gray-50 text-[10px] text-gray-400 text-center border-t">
-        SRT D-Team Performance Tracker<br>
+    <footer class="p-4 bg-gray-50 text-[10px] text-gray-400 text-center border-t">
+        SRT D-Team Attendance System<br>
         <span id="dbStatus">연결 확인 중...</span>
     </footer>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, collection, onSnapshot, query, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Firebase configuration using provided environment variables
+    // 글로벌 환경 변수 활용
     const firebaseConfig = JSON.parse(__firebase_config);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-prod';
-    const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -113,58 +107,69 @@
 
     const members = ["강동현", "강동훈", "송채한", "김미화", "김재산", "김찬석", "김한나", "류지찬", "박성환", "박종봉", "소병득", "서정화", "신영섭", "안지훈", "오한천", "이승준", "이용구", "정덕수", "주효석", "서인수", "박창선", "김병식"].sort();
     
-    const today = new Date();
-    let currentViewDate = new Date(today.getFullYear(), today.getMonth(), 1);
+    let currentViewDate = new Date();
+    currentViewDate.setDate(1);
+    
     let allRecords = [];
+    let currentUser = null;
+    let unsubscribe = null;
 
-    // Authentication optimized for Canvas environment (No Anonymous login)
-    const initAuth = async () => {
+    // RULE 3: Auth Before Queries - 인증 우선 처리
+    async function startAuth() {
         try {
-            if (initialToken) {
-                await signInWithCustomToken(auth, initialToken);
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
             } else {
-                console.warn("No authentication token provided.");
-                document.getElementById('dbStatus').textContent = "인증 토큰 없음 (접근 제한)";
+                await signInAnonymously(auth);
             }
-        } catch (error) {
-            console.error("Auth Failure:", error);
-            document.getElementById('dbStatus').textContent = "인증 실패: " + error.message;
+        } catch (e) {
+            console.error("Authentication failed:", e);
+            document.getElementById('dbStatus').textContent = "인증 실패 - 다시 시도해주세요";
         }
-    };
+    }
 
     onAuthStateChanged(auth, (user) => {
+        currentUser = user;
         if (user) {
-            document.getElementById('dbStatus').textContent = "연결 완료";
-            document.getElementById('statusIndicator').className = "w-2.5 h-2.5 rounded-full bg-green-500 border border-white";
-            startSync();
+            document.getElementById('statusIndicator').className = "w-3 h-3 rounded-full bg-green-500 border-2 border-white";
+            document.getElementById('dbStatus').textContent = "실시간 데이터 동기화 중";
+            startRealtimeSync();
         } else {
-            document.getElementById('statusIndicator').className = "w-2.5 h-2.5 rounded-full bg-red-500 border border-white";
+            startAuth();
         }
     });
 
-    function startSync() {
-        const q = collection(db, 'artifacts', appId, 'public', 'data', 'records');
-        onSnapshot(q, (snapshot) => {
-            allRecords = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+    // 실시간 동기화 - RULE 1: /artifacts/{appId}/public/data/{collection} 경로 준수
+    function startRealtimeSync() {
+        if (!currentUser) return;
+        if (unsubscribe) unsubscribe();
+
+        const recordsCol = collection(db, 'artifacts', appId, 'public', 'data', 'records');
+        
+        unsubscribe = onSnapshot(recordsCol, (snapshot) => {
+            allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             updateUI();
         }, (err) => {
-            console.error("Firestore Error:", err);
-            document.getElementById('dbStatus').textContent = "데이터 동기화 실패";
+            console.error("Firestore Permission Error:", err);
+            document.getElementById('dbStatus').innerHTML = `<span class="text-red-500 font-bold italic">권한 오류 발생 - 경로 확인이 필요합니다.</span>`;
+            document.getElementById('statusIndicator').className = "w-3 h-3 rounded-full bg-red-500 border-2 border-white";
         });
     }
 
     function updateUI() {
         renderCalendar();
         renderRanking();
-        updatePersonalSummary();
+        updateSummary();
     }
 
     const userSelect = document.getElementById('userSelect');
-    members.forEach(name => {
+    members.forEach(m => {
         const opt = document.createElement('option');
-        opt.value = name; opt.textContent = name;
+        opt.value = m; opt.textContent = m;
         userSelect.appendChild(opt);
     });
+    const lastUser = localStorage.getItem('srt_user');
+    if (lastUser) userSelect.value = lastUser;
 
     window.changeMonth = (dir) => {
         currentViewDate.setMonth(currentViewDate.getMonth() + dir);
@@ -172,115 +177,106 @@
     };
 
     function renderCalendar() {
-        const year = currentViewDate.getFullYear();
-        const month = currentViewDate.getMonth();
-        document.getElementById('displayMonth').textContent = `${year}년 ${month + 1}월`;
+        const y = currentViewDate.getFullYear();
+        const m = currentViewDate.getMonth();
+        document.getElementById('displayMonth').textContent = `${y}년 ${m + 1}월`;
         
-        const firstDay = new Date(year, month, 1).getDay();
-        const lastDate = new Date(year, month + 1, 0).getDate();
+        const firstDay = new Date(y, m, 1).getDay();
+        const lastDate = new Date(y, m + 1, 0).getDate();
         const container = document.getElementById('calendar-days');
         container.innerHTML = "";
 
-        for (let i = 0; i < firstDay; i++) {
-            const empty = document.createElement('div');
-            container.appendChild(empty);
-        }
+        for (let i = 0; i < firstDay; i++) container.appendChild(document.createElement('div'));
 
-        const userName = userSelect.value;
-        const monthPrefix = `${year}-${String(month+1).padStart(2,'0')}`;
-        const monthRecords = allRecords.filter(r => r.date.startsWith(monthPrefix));
+        const name = userSelect.value;
+        const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
 
         for (let d = 1; d <= lastDate; d++) {
-            const dateStr = `${monthPrefix}-${String(d).padStart(2,'0')}`;
-            const dateObj = new Date(year, month, d);
+            const dateStr = `${prefix}-${String(d).padStart(2,'0')}`;
+            const dateObj = new Date(y, m, d);
+            const isToday = new Date().toDateString() === dateObj.toDateString();
             const isWedSun = dateObj.getDay() === 3 || dateObj.getDay() === 0;
-            const isToday = (year === today.getFullYear() && month === today.getMonth() && d === today.getDate());
-            
+
             const cell = document.createElement('div');
-            cell.className = `calendar-cell border rounded-xl p-1 text-center flex flex-col justify-between cursor-pointer active:scale-95 transition-all ${isWedSun ? 'bg-orange-50 border-orange-100' : 'bg-white border-gray-100'} ${isToday ? 'today-highlight shadow-inner' : ''}`;
+            cell.className = `calendar-cell border text-center flex flex-col justify-between p-1.5 cursor-pointer active:scale-95 transition-all ${isWedSun ? 'bg-orange-50/50 border-orange-100' : 'bg-white border-gray-100'} ${isToday ? 'today-highlight shadow-sm' : ''}`;
             cell.onclick = () => openForm(dateStr, isWedSun);
 
             const dayNum = document.createElement('span');
             dayNum.className = `text-[10px] font-black ${dateObj.getDay() === 0 ? 'text-red-500' : dateObj.getDay() === 6 ? 'text-blue-600' : 'text-gray-400'}`;
             dayNum.textContent = d;
 
-            const content = document.createElement('div');
-            content.className = "flex flex-col items-center gap-0.5 mb-1";
+            const info = document.createElement('div');
+            info.className = "flex flex-col items-center gap-0.5 mb-1";
             
-            const dateData = monthRecords.filter(r => r.date === dateStr);
-            if (userName) {
-                const myRec = dateData.find(r => r.name === userName);
-                if (myRec) {
-                    if (myRec.attended) content.innerHTML += `<div class="text-[12px] animate-bounce">✅</div>`;
-                    if (myRec.distance > 0) content.innerHTML += `<div class="text-[9px] font-black text-gray-800 bg-yellow-100 px-1 rounded">${myRec.distance}k</div>`;
-                }
+            const data = allRecords.filter(r => r.date === dateStr);
+            if (name) {
+                const my = data.find(r => r.name === name);
+                if (my?.attended) info.innerHTML += `<div class="text-[12px]">✅</div>`;
+                if (my?.distance > 0) info.innerHTML += `<div class="text-[9px] font-black text-blue-700 bg-blue-100 px-1 rounded">${my.distance}k</div>`;
             } else {
-                const totalDist = dateData.reduce((a, b) => a + (Number(b.distance) || 0), 0);
-                const totalAttend = dateData.filter(r => r.attended).length;
-                if (totalDist > 0) content.innerHTML += `<div class="text-[8px] font-bold text-blue-500">Σ${totalDist.toFixed(1)}</div>`;
-                if (totalAttend > 0) content.innerHTML += `<div class="text-[8px] font-bold text-green-600">👤${totalAttend}</div>`;
+                const td = data.reduce((a, b) => a + (Number(b.distance) || 0), 0);
+                const ta = data.filter(r => r.attended).length;
+                if (td > 0) info.innerHTML += `<div class="text-[8px] font-bold text-blue-500">Σ${td.toFixed(1)}</div>`;
+                if (ta > 0) info.innerHTML += `<div class="text-[8px] font-bold text-green-600 font-black">👤${ta}</div>`;
             }
 
-            cell.appendChild(dayNum);
-            cell.appendChild(content);
+            cell.append(dayNum, info);
             container.appendChild(cell);
         }
     }
 
     function renderRanking() {
         const prefix = `${currentViewDate.getFullYear()}-${String(currentViewDate.getMonth() + 1).padStart(2, '0')}`;
-        const distStats = {};
-        const attendStats = {};
-        members.forEach(m => { distStats[m] = 0; attendStats[m] = 0; });
+        const stats = {};
+        members.forEach(m => stats[m] = { d: 0, a: 0 });
 
         allRecords.forEach(r => {
-            if (r.date.startsWith(prefix)) {
-                distStats[r.name] += (Number(r.distance) || 0);
-                if (r.attended) attendStats[r.name] += 1;
+            if (r.date.startsWith(prefix) && stats[r.name]) {
+                stats[r.name].d += (Number(r.distance) || 0);
+                if (r.attended) stats[r.name].a += 1;
             }
         });
 
-        const sortedDist = Object.entries(distStats).sort((a, b) => b[1] - a[1]).filter(x => x[1] > 0).slice(0, 5);
-        const distContainer = document.getElementById('ranking-distance');
-        distContainer.innerHTML = sortedDist.length === 0 ? `<div class="text-xs text-gray-300 italic text-center p-4">기록이 없습니다.</div>` : "";
-        sortedDist.forEach(([name, val], i) => distContainer.appendChild(createRankItem(i, name, val.toFixed(1) + ' km', 'blue')));
+        const dRank = Object.entries(stats).sort((a, b) => b[1].d - a[1].d).filter(x => x[1].d > 0).slice(0, 5);
+        const aRank = Object.entries(stats).sort((a, b) => b[1].a - a[1].a).filter(x => x[1].a > 0).slice(0, 5);
 
-        const sortedAttend = Object.entries(attendStats).sort((a, b) => b[1] - a[1]).filter(x => x[1] > 0).slice(0, 5);
-        const attendContainer = document.getElementById('ranking-attendance');
-        attendContainer.innerHTML = sortedAttend.length === 0 ? `<div class="text-xs text-gray-300 italic text-center p-4">기록이 없습니다.</div>` : "";
-        sortedAttend.forEach(([name, val], i) => attendContainer.appendChild(createRankItem(i, name, val + ' 회', 'green')));
+        const dCont = document.getElementById('ranking-distance');
+        dCont.innerHTML = dRank.length ? "" : `<div class="text-xs text-gray-300 italic text-center py-4">이번 달 기록이 없습니다.</div>`;
+        dRank.forEach(([n, v], i) => dCont.innerHTML += rankHTML(i, n, v.d.toFixed(1) + ' km', 'blue'));
+
+        const aCont = document.getElementById('ranking-attendance');
+        aCont.innerHTML = aRank.length ? "" : `<div class="text-xs text-gray-300 italic text-center py-4">공식 출석이 없습니다.</div>`;
+        aRank.forEach(([n, v], i) => aCont.innerHTML += rankHTML(i, n, v.a + ' 회', 'green'));
     }
 
-    function createRankItem(i, name, valueText, color) {
-        const item = document.createElement('div');
-        const colorClass = color === 'blue' ? 'from-blue-500 to-blue-600' : 'from-green-500 to-green-600';
-        const rankBg = i === 0 ? `bg-gradient-to-r ${colorClass} text-white shadow-lg` : 'bg-white text-gray-700 border border-gray-100';
-        item.className = `flex items-center p-3.5 rounded-2xl ${rankBg} transition-transform hover:scale-[1.02]`;
-        item.innerHTML = `<span class="w-8 font-black text-sm">${i+1}</span><span class="flex-grow font-bold text-sm">${name}</span><span class="font-black text-sm text-right">${valueText}</span>`;
-        return item;
+    function rankHTML(i, name, val, color) {
+        const bg = i === 0 ? (color === 'blue' ? 'bg-blue-600 text-white shadow-md' : 'bg-green-600 text-white shadow-md') : 'bg-white border border-gray-100 text-gray-700';
+        return `<div class="flex items-center p-4 rounded-2xl ${bg} transition-all">
+            <span class="w-8 font-black text-sm">${i+1}</span>
+            <span class="flex-grow font-bold text-sm">${name}</span>
+            <span class="font-black text-sm">${val}</span>
+        </div>`;
     }
 
-    function updatePersonalSummary() {
-        const userName = userSelect.value;
-        if (!userName) { document.getElementById('personal-summary').classList.add('hidden'); return; }
+    function updateSummary() {
+        const name = userSelect.value;
+        const box = document.getElementById('personal-summary');
+        if (!name) { box.classList.add('hidden'); return; }
+        
         const prefix = `${currentViewDate.getFullYear()}-${String(currentViewDate.getMonth() + 1).padStart(2, '0')}`;
-        const myMonthRecords = allRecords.filter(r => r.name === userName && r.date.startsWith(prefix));
-        document.getElementById('my-month-dist').textContent = myMonthRecords.reduce((acc, cur) => acc + (Number(cur.distance) || 0), 0).toFixed(1);
-        document.getElementById('my-month-attend').textContent = myMonthRecords.filter(r => r.attended).length;
-        document.getElementById('personal-summary').classList.remove('hidden');
+        const my = allRecords.filter(r => r.name === name && r.date.startsWith(prefix));
+        document.getElementById('my-month-dist').textContent = my.reduce((a, b) => a + (Number(b.distance) || 0), 0).toFixed(1);
+        document.getElementById('my-month-attend').textContent = my.filter(r => r.attended).length;
+        box.classList.remove('hidden');
     }
 
-    let selectedDate = "";
-    window.openForm = (date, isSpecial) => {
-        if (!userSelect.value) {
-            alert("이름을 먼저 선택해 주세요.");
-            userSelect.focus();
-            return;
-        }
-        selectedDate = date;
+    let activeDate = "";
+    window.openForm = (date, special) => {
+        if (!userSelect.value) { alert("상단에서 이름을 먼저 선택해주세요!"); return; }
+        activeDate = date;
         const [y, m, d] = date.split('-');
         document.getElementById('form-date-title').textContent = `${parseInt(m)}월 ${parseInt(d)}일 기록`;
-        document.getElementById('attendance-box').classList.toggle('hidden', !isSpecial);
+        document.getElementById('attendance-box').classList.toggle('hidden', !special);
         const rec = allRecords.find(r => r.date === date && r.name === userSelect.value);
         document.getElementById('attend-check').checked = rec?.attended || false;
         document.getElementById('distance-input').value = rec?.distance || "";
@@ -290,35 +286,34 @@
     window.closeForm = () => document.getElementById('entry-form').classList.add('hidden');
 
     window.saveRecord = async () => {
-        if (!auth.currentUser) return alert("사용자 인증 정보가 없습니다.");
-        
+        if (!currentUser) {
+            alert("연결 중입니다. 잠시 후 다시 시도해주세요.");
+            return;
+        }
         const name = userSelect.value;
         const dist = parseFloat(document.getElementById('distance-input').value) || 0;
         const attended = document.getElementById('attend-check').checked;
-        const docId = `${name}_${selectedDate}`;
-        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'records', docId);
+        
+        // 데이터 경로: /artifacts/{appId}/public/data/records/{docID}
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'records', `${name}_${activeDate}`);
 
         try {
             if (dist === 0 && !attended) {
-                await deleteDoc(ref);
+                await deleteDoc(docRef);
             } else {
-                await setDoc(ref, { 
-                    name, 
-                    date: selectedDate, 
-                    distance: dist, 
-                    attended, 
-                    updatedAt: Date.now() 
-                });
+                await setDoc(docRef, { name, date: activeDate, distance: dist, attended, ts: Date.now() });
             }
             closeForm();
         } catch (e) {
-            console.error("Save Error:", e);
-            alert("기록 저장 중 오류가 발생했습니다. 권한을 확인하세요.");
+            console.error("Save failed:", e);
+            alert("저장 실패! Firebase 보안 규칙에 따라 지정된 경로 외에는 쓰기가 차단되었습니다.");
         }
     };
 
-    userSelect.onchange = () => updateUI();
-    initAuth();
+    userSelect.onchange = () => {
+        localStorage.setItem('srt_user', userSelect.value);
+        updateUI();
+    };
 </script>
 
 </body>
