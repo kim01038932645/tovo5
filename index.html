@@ -62,6 +62,14 @@
         </div>
     </main>
 
+    <!-- Error Overlay (config missing) -->
+    <div id="error-overlay" class="hidden fixed inset-0 bg-white/95 backdrop-blur-md z-[200] flex flex-col items-center justify-center p-8 text-center">
+        <div class="text-5xl mb-4">📡</div>
+        <h2 class="text-xl font-bold text-gray-800 mb-2">서버 설정 대기 중</h2>
+        <p class="text-sm text-gray-500 mb-6">Canvas 시스템에서 Firebase 설정값을 불러오는 중입니다. 잠시만 기다려주시거나 아래 버튼을 눌러주세요.</p>
+        <button onclick="location.reload()" class="px-6 py-3 bg-blue-600 text-white rounded-full font-bold shadow-lg active:scale-95 transition-all">페이지 새로고침</button>
+    </div>
+
     <!-- Entry Form -->
     <div id="entry-form" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
         <div class="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl">
@@ -86,7 +94,7 @@
 
     <footer class="p-4 bg-gray-50 text-[10px] text-gray-400 text-center border-t border-gray-100">
         SRT D-Team Attendance System<br>
-        <span id="dbStatus" class="font-bold text-blue-400">서버 연결 대기 중...</span>
+        <span id="dbStatus" class="font-bold text-blue-400">시스템 초기화 중...</span>
     </footer>
 </div>
 
@@ -108,6 +116,7 @@
     const statusText = document.getElementById('dbStatus');
     const statusDot = document.getElementById('topStatus');
     const userSelect = document.getElementById('userSelect');
+    const errorOverlay = document.getElementById('error-overlay');
 
     // Setup User List
     members.forEach(m => {
@@ -119,18 +128,27 @@
 
     // --- Firebase Initialization Flow ---
     async function startApp() {
-        // 1. Wait for Firebase Config
+        // 1. Wait for Firebase Config (Increased robustness)
         let config = null;
-        for (let i = 0; i < 50; i++) {
-            if (window.__firebase_config) {
-                config = JSON.parse(window.__firebase_config);
-                break;
+        statusText.textContent = "설정값 주입 대기 중...";
+
+        // 최대 10초까지 폴링 (환경에 따라 늦게 주입될 수 있음)
+        for (let i = 0; i < 100; i++) {
+            if (typeof window.__firebase_config !== 'undefined' && window.__firebase_config) {
+                try {
+                    config = JSON.parse(window.__firebase_config);
+                    break;
+                } catch (e) {
+                    console.error("JSON Parse Error on Config", e);
+                }
             }
             await new Promise(r => setTimeout(r, 100));
         }
 
         if (!config) {
-            statusText.textContent = "연결 오류: 서버 설정값이 주입되지 않았습니다.";
+            statusText.textContent = "연결 오류: 서버 설정값이 없습니다.";
+            statusDot.className = "status-dot bg-red-500 border border-white";
+            errorOverlay.classList.remove('hidden');
             return;
         }
 
@@ -142,28 +160,41 @@
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
 
             // 3. Strict Authentication First
-            statusText.textContent = "사용자 인증 중...";
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
+            statusText.textContent = "익명 인증 시도 중...";
+            
+            // Re-usable auth logic with retry
+            const login = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (e) {
+                    console.error("Auth attempt failed", e);
+                    setTimeout(login, 2000); // 실패 시 2초 후 재시도
+                }
+            };
+            
+            await login();
 
             // 4. On Auth State Changed -> Start Sync
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user;
                     statusDot.className = "status-dot bg-green-500 border border-white";
-                    statusText.textContent = "서버 연결 성공 (실시간 모드)";
+                    statusText.textContent = "온라인: 서버 연결됨";
+                    errorOverlay.classList.add('hidden');
                     initRealtimeSync(appId);
                 } else {
-                    statusDot.className = "status-dot bg-red-500 border border-white";
-                    statusText.textContent = "인증 세션 만료";
+                    statusDot.className = "status-dot bg-yellow-500 border border-white";
+                    statusText.textContent = "인증 대기 중...";
                 }
             });
 
         } catch (e) {
-            statusText.textContent = "서버 초기화 실패: " + e.message;
+            statusText.textContent = "초기화 오류: " + e.message;
+            statusDot.className = "status-dot bg-red-500 border border-white";
         }
     }
 
@@ -176,7 +207,7 @@
             renderAll();
         }, (err) => {
             statusText.textContent = "데이터 동기화 실패: " + err.code;
-            console.error(err);
+            console.error("Firestore Snapshot Error", err);
         });
     }
 
@@ -286,7 +317,7 @@
     };
 
     window.openForm = (date, special) => {
-        if (!userSelect.value) { alert("이름을 선택해주세요."); return; }
+        if (!userSelect.value) { alert("상단에서 이름을 선택해주세요."); return; }
         activeDate = date;
         const [, m, d] = date.split('-');
         document.getElementById('form-date-title').textContent = `${parseInt(m)}월 ${parseInt(d)}일 기록`;
@@ -300,15 +331,13 @@
     window.closeForm = () => document.getElementById('entry-form').classList.add('hidden');
 
     window.saveRecord = async () => {
-        if (!currentUser || !db) return;
+        if (!currentUser || !db) { alert("서버와 연결되지 않았습니다."); return; }
         const name = userSelect.value;
         const dist = parseFloat(document.getElementById('distance-input').value) || 0;
         const attended = document.getElementById('attend-check').checked;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
         
-        // 경로 규칙 준수
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'records', `${name}_${activeDate}`);
-        
         const btn = document.getElementById('saveBtn');
         btn.disabled = true; btn.textContent = "저장 중...";
 
@@ -317,7 +346,7 @@
             else await setDoc(docRef, { name, date: activeDate, distance: dist, attended, ts: Date.now() });
             window.closeForm();
         } catch (e) {
-            alert("저장 중 서버 오류: " + e.code);
+            alert("저장 오류: " + e.code);
         } finally {
             btn.disabled = false; btn.textContent = "저장";
         }
