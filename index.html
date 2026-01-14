@@ -9,86 +9,86 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-        .calendar-cell { min-height: 75px; transition: background-color 0.2s; position: relative; border-radius: 12px; }
-        .calendar-cell:active { background-color: #f3f4f6; }
+        .calendar-cell { min-height: 80px; transition: all 0.2s; position: relative; border-radius: 12px; border: 1px solid #f3f4f6; }
+        .calendar-cell:active { transform: scale(0.95); background-color: #f9fafb; }
         .today-highlight { border: 2px solid #3b82f6 !important; background-color: #eff6ff !important; }
         ::-webkit-scrollbar { width: 0px; background: transparent; }
-        html, body { overscroll-behavior-y: contain; }
+        html, body { overscroll-behavior-y: contain; height: 100%; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
 
 <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
-    <!-- 상단 헤더 -->
+    <!-- 헤더 -->
     <header class="bg-blue-600 text-white p-5 sticky top-0 z-50 shadow-md">
         <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-2">
                 <h1 class="text-xl font-bold">🏃‍♂️ SRT D조 출석부</h1>
-                <div id="statusIndicator" class="w-3 h-3 rounded-full bg-yellow-400 border-2 border-white transition-colors duration-500"></div>
+                <div id="statusIndicator" class="w-3 h-3 rounded-full bg-red-400 border-2 border-white animate-pulse"></div>
             </div>
-            <div id="personal-summary" class="text-[11px] font-bold opacity-90 hidden bg-blue-700 px-3 py-1 rounded-full">
+            <div id="personal-summary" class="text-[11px] font-bold bg-blue-700 px-3 py-1 rounded-full hidden">
                 이번 달: <span id="my-month-dist">0.0</span>km / <span id="my-month-attend">0</span>회
             </div>
         </div>
-        <select id="userSelect" class="w-full bg-blue-700 text-white text-sm rounded-xl p-3 outline-none border-none appearance-none cursor-pointer font-bold">
+        <select id="userSelect" class="w-full bg-blue-700 text-white text-sm rounded-xl p-3 outline-none border-none font-bold">
             <option value="">본인 이름을 선택하세요</option>
         </select>
     </header>
 
     <main class="flex-grow p-4 space-y-6 overflow-y-auto pb-24">
-        <!-- 월 이동 내비게이션 -->
-        <div class="flex justify-between items-center bg-blue-50 p-3 rounded-2xl">
-            <button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-black text-xl active:scale-90 transition-transform">◀</button>
-            <span id="displayMonth" class="text-lg font-black text-blue-900">2026년 1월</span>
-            <button onclick="changeMonth(1)" class="p-2 text-blue-600 font-black text-xl active:scale-90 transition-transform">▶</button>
+        <!-- 내비게이션 -->
+        <div class="flex justify-between items-center bg-gray-100 p-3 rounded-2xl">
+            <button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-black text-xl">◀</button>
+            <span id="displayMonth" class="text-lg font-black text-blue-900">로드 중...</span>
+            <button onclick="changeMonth(1)" class="p-2 text-blue-600 font-black text-xl">▶</button>
         </div>
 
-        <!-- 달력 영역 -->
-        <div id="section-calendar" class="space-y-4">
+        <!-- 달력 -->
+        <div class="space-y-4">
             <div class="grid grid-cols-7 text-center text-[10px] font-black text-gray-400 uppercase tracking-tighter">
                 <div class="text-red-500">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-600">Sat</div>
             </div>
             <div id="calendar-days" class="grid grid-cols-7 gap-2"></div>
         </div>
 
-        <!-- 랭킹 영역 -->
-        <div class="pt-6 border-t-2 border-dashed border-gray-100 space-y-8">
+        <!-- 랭킹 -->
+        <div class="pt-6 border-t border-gray-100 space-y-8">
             <div>
-                <h2 class="text-lg font-black text-blue-900 mb-4 flex items-center gap-2">🔥 누적 거리 TOP 5 (이번 달)</h2>
+                <h2 class="text-lg font-black text-blue-900 mb-4">🔥 거리 TOP 5 (이번 달)</h2>
                 <div id="ranking-distance" class="space-y-2"></div>
             </div>
             <div>
-                <h2 class="text-lg font-black text-green-700 mb-4 flex items-center gap-2">✅ 공식 출석 TOP 5 (이번 달)</h2>
+                <h2 class="text-lg font-black text-green-700 mb-4">✅ 출석 TOP 5 (이번 달)</h2>
                 <div id="ranking-attendance" class="space-y-2"></div>
-            </div>
-        </div>
-
-        <!-- 입력 팝업 모달 -->
-        <div id="entry-form" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
-            <div class="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl">
-                <h3 id="form-date-title" class="text-xl font-black mb-6 text-center text-gray-800">날짜 기록</h3>
-                <div id="attendance-box" class="mb-6 hidden">
-                    <label class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl cursor-pointer border-2 border-transparent active:border-blue-300">
-                        <span class="font-bold text-blue-900">공식 모임 출석</span>
-                        <input type="checkbox" id="attend-check" class="w-6 h-6 rounded-full accent-blue-600">
-                    </label>
-                </div>
-                <div class="mb-8 text-center">
-                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">러닝 거리 (km)</label>
-                    <input type="number" id="distance-input" step="0.1" inputmode="decimal" placeholder="0.0" 
-                           class="w-full text-5xl font-black text-center text-blue-600 border-b-4 border-gray-100 focus:border-blue-500 py-2 outline-none bg-transparent">
-                </div>
-                <div class="flex gap-3">
-                    <button onclick="closeForm()" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold">취소</button>
-                    <button id="saveBtn" onclick="saveRecord()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">저장</button>
-                </div>
             </div>
         </div>
     </main>
 
+    <!-- 입력 모달 -->
+    <div id="entry-form" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
+        <div class="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl">
+            <h3 id="form-date-title" class="text-xl font-black mb-6 text-center">기록 입력</h3>
+            <div id="attendance-box" class="mb-6 hidden">
+                <label class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl cursor-pointer">
+                    <span class="font-bold text-blue-900">공식 모임 출석</span>
+                    <input type="checkbox" id="attend-check" class="w-6 h-6 accent-blue-600">
+                </label>
+            </div>
+            <div class="mb-8 text-center">
+                <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">러닝 거리 (km)</label>
+                <input type="number" id="distance-input" step="0.1" inputmode="decimal" placeholder="0.0" 
+                       class="w-full text-5xl font-black text-center text-blue-600 border-b-4 border-gray-100 focus:border-blue-500 py-2 outline-none">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeForm()" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold">취소</button>
+                <button id="saveBtn" onclick="saveRecord()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black">저장</button>
+            </div>
+        </div>
+    </div>
+
     <footer class="p-4 bg-gray-50 text-[10px] text-gray-400 text-center border-t">
-        SRT D-Team Attendance System<br>
-        <span id="dbStatus">시스템 초기화 중...</span>
+        SRT D-Team System<br>
+        <span id="dbStatus">연결 대기 중...</span>
     </footer>
 </div>
 
@@ -97,19 +97,17 @@
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // 1. Firebase Config Safe Load
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
-    
-    // 2. Data State
+    // --- 시스템 설정 ---
     const members = ["강동현", "강동훈", "송채한", "김미화", "김재산", "김찬석", "김한나", "류지찬", "박성환", "박종봉", "소병득", "서정화", "신영섭", "안지훈", "오한천", "이승준", "이용구", "정덕수", "주효석", "서인수", "박창선", "김병식"].sort();
     let currentViewDate = new Date();
     currentViewDate.setDate(1);
     let allRecords = [];
     let currentUser = null;
-    let unsubscribe = null;
+    let activeDate = "";
+    let db = null;
+    let auth = null;
 
-    // 3. UI Initialize
+    // --- 초기 UI 셋업 ---
     const userSelect = document.getElementById('userSelect');
     members.forEach(m => {
         const opt = document.createElement('option');
@@ -118,140 +116,150 @@
     });
     const lastUser = localStorage.getItem('srt_user');
     if (lastUser) userSelect.value = lastUser;
-    
-    updateUI(); // 초기 뼈대 렌더링
 
-    // 4. Firebase Execution
-    if (firebaseConfig) {
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        // Auth Logic with Exponential Backoff
-        async function startAuth() {
-            let retries = 0;
-            while (retries < 5) {
-                try {
-                    document.getElementById('dbStatus').textContent = `서버 인증 중 (${retries + 1}/5)...`;
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                    return;
-                } catch (e) {
-                    retries++;
-                    await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
-                }
-            }
-            document.getElementById('dbStatus').textContent = "인증 실패 - 페이지를 새로고침 해주세요.";
-        }
-
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                document.getElementById('statusIndicator').className = "w-3 h-3 rounded-full bg-green-500 border-2 border-white";
-                document.getElementById('dbStatus').textContent = "실시간 연결됨 (데이터 확인 중)";
-                startRealtimeSync(db);
-            } else {
-                startAuth();
-            }
-        });
-
-        function startRealtimeSync(dbInstance) {
-            if (unsubscribe) unsubscribe();
-            // RULE 1: Strict Paths
-            const recordsCol = collection(dbInstance, 'artifacts', appId, 'public', 'data', 'records');
-            
-            unsubscribe = onSnapshot(recordsCol, (snapshot) => {
-                allRecords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                document.getElementById('dbStatus').textContent = `실시간 동기화 중 (기록: ${allRecords.length}개)`;
-                updateUI();
-            }, (err) => {
-                console.error("Firestore Error:", err);
-                document.getElementById('dbStatus').innerHTML = `<span class="text-red-500">접근 권한 오류 (Path Error)</span>`;
-                document.getElementById('statusIndicator').className = "w-3 h-3 rounded-full bg-red-500 border-2 border-white";
-            });
-        }
-
-        window.saveRecord = async () => {
-            if (!currentUser) return;
-            const name = userSelect.value;
-            const dist = parseFloat(document.getElementById('distance-input').value) || 0;
-            const attended = document.getElementById('attend-check').checked;
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'records', `${name}_${activeDate}`);
-
-            const saveBtn = document.getElementById('saveBtn');
-            saveBtn.disabled = true;
-            saveBtn.textContent = "저장 중...";
-
-            try {
-                if (dist === 0 && !attended) {
-                    await deleteDoc(docRef);
-                } else {
-                    await setDoc(docRef, { name, date: activeDate, distance: dist, attended, ts: Date.now() });
-                }
-                closeForm();
-            } catch (e) {
-                console.error("Save Error:", e);
-                alert("저장 실패: 경로 권한이 없거나 네트워크 오류입니다.");
-            } finally {
-                saveBtn.disabled = false;
-                saveBtn.textContent = "저장";
-            }
-        };
-    } else {
-        document.getElementById('dbStatus').textContent = "환경 설정(Config)을 찾을 수 없습니다.";
-    }
-
-    // 5. UI Helpers
-    function updateUI() {
+    function renderAll() {
         renderCalendar();
         renderRanking();
         updateSummary();
     }
 
+    // --- 핵심: Firebase 자동 연결 로직 ---
+    async function bootstrap() {
+        const statusText = document.getElementById('dbStatus');
+        
+        // 1. 설정값 로드 대기 (최대 30회 재시도)
+        let config = null;
+        for (let i = 0; i < 30; i++) {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                config = JSON.parse(__firebase_config);
+                break;
+            }
+            statusText.textContent = `환경 설정 로드 중... (${i+1}/30)`;
+            await new Promise(r => setTimeout(r, 300));
+        }
+
+        if (!config) {
+            statusText.innerHTML = "설정 로드 실패. <button onclick='location.reload()' class='underline'>새로고침</button>";
+            return;
+        }
+
+        const app = initializeApp(config);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
+
+        // 2. 인증 시작
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('statusIndicator').classList.remove('bg-red-400', 'animate-pulse');
+                document.getElementById('statusIndicator').classList.add('bg-green-500');
+                statusText.textContent = "서버 연결됨";
+                startSync(appId);
+            } else {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (e) {
+                    statusText.textContent = "인증 시도 중...";
+                }
+            }
+        });
+    }
+
+    function startSync(appId) {
+        const path = `/artifacts/${appId}/public/data/records`;
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'records');
+        
+        onSnapshot(colRef, (snapshot) => {
+            allRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            document.getElementById('dbStatus').textContent = `동기화 완료 (기록: ${allRecords.length}개)`;
+            renderAll();
+        }, (err) => {
+            document.getElementById('dbStatus').textContent = "접근 권한 확인 중...";
+            console.error(err);
+        });
+    }
+
+    // --- 기능 함수 ---
+    window.saveRecord = async () => {
+        if (!currentUser || !db) return;
+        const name = userSelect.value;
+        const dist = parseFloat(document.getElementById('distance-input').value) || 0;
+        const attended = document.getElementById('attend-check').checked;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
+        
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'records', `${name}_${activeDate}`);
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.textContent = "저장 중...";
+
+        try {
+            if (dist === 0 && !attended) {
+                await deleteDoc(docRef);
+            } else {
+                await setDoc(docRef, { name, date: activeDate, distance: dist, attended, ts: Date.now() });
+            }
+            closeForm();
+        } catch (e) {
+            alert("저장 오류가 발생했습니다.");
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "저장";
+        }
+    };
+
     window.changeMonth = (dir) => {
         currentViewDate.setMonth(currentViewDate.getMonth() + dir);
-        updateUI();
+        renderAll();
     };
 
     function renderCalendar() {
         const y = currentViewDate.getFullYear();
         const m = currentViewDate.getMonth();
         document.getElementById('displayMonth').textContent = `${y}년 ${m + 1}월`;
+        
         const firstDay = new Date(y, m, 1).getDay();
         const lastDate = new Date(y, m + 1, 0).getDate();
         const container = document.getElementById('calendar-days');
         container.innerHTML = "";
+
         for (let i = 0; i < firstDay; i++) container.appendChild(document.createElement('div'));
-        const name = userSelect.value;
+
+        const myName = userSelect.value;
         const prefix = `${y}-${String(m+1).padStart(2,'0')}`;
+
         for (let d = 1; d <= lastDate; d++) {
             const dateStr = `${prefix}-${String(d).padStart(2,'0')}`;
             const dateObj = new Date(y, m, d);
             const isToday = new Date().toDateString() === dateObj.toDateString();
-            const isWedSun = dateObj.getDay() === 3 || dateObj.getDay() === 0;
+            const isSpecial = dateObj.getDay() === 3 || dateObj.getDay() === 0;
+
             const cell = document.createElement('div');
-            cell.className = `calendar-cell border text-center flex flex-col justify-between p-1.5 cursor-pointer active:scale-95 transition-all ${isWedSun ? 'bg-orange-50/50 border-orange-100' : 'bg-white border-gray-100'} ${isToday ? 'today-highlight shadow-sm' : ''}`;
-            cell.onclick = () => openForm(dateStr, isWedSun);
-            const dayNum = document.createElement('span');
-            dayNum.className = `text-[10px] font-black ${dateObj.getDay() === 0 ? 'text-red-500' : dateObj.getDay() === 6 ? 'text-blue-600' : 'text-gray-400'}`;
-            dayNum.textContent = d;
-            const info = document.createElement('div');
-            info.className = "flex flex-col items-center gap-0.5 mb-1";
-            const data = allRecords.filter(r => r.date === dateStr);
-            if (name) {
-                const my = data.find(r => r.name === name);
-                if (my?.attended) info.innerHTML += `<div class="text-[12px]">✅</div>`;
-                if (my?.distance > 0) info.innerHTML += `<div class="text-[9px] font-black text-blue-700 bg-blue-100 px-1 rounded">${my.distance}k</div>`;
+            cell.className = `calendar-cell p-2 flex flex-col justify-between ${isSpecial ? 'bg-orange-50/50' : 'bg-white'} ${isToday ? 'today-highlight' : ''}`;
+            cell.onclick = () => openForm(dateStr, isSpecial);
+
+            const dNum = document.createElement('span');
+            dNum.className = `text-[10px] font-bold ${dateObj.getDay() === 0 ? 'text-red-500' : dateObj.getDay() === 6 ? 'text-blue-500' : 'text-gray-400'}`;
+            dNum.textContent = d;
+
+            const content = document.createElement('div');
+            content.className = "flex flex-col items-center gap-0.5 mb-1";
+            
+            const dayData = allRecords.filter(r => r.date === dateStr);
+            if (myName) {
+                const my = dayData.find(r => r.name === myName);
+                if (my?.attended) content.innerHTML += `<div class="text-xs">✅</div>`;
+                if (my?.distance > 0) content.innerHTML += `<div class="text-[9px] font-black text-blue-700 bg-blue-100 px-1 rounded">${my.distance}k</div>`;
             } else {
-                const td = data.reduce((a, b) => a + (Number(b.distance) || 0), 0);
-                const ta = data.filter(r => r.attended).length;
-                if (td > 0) info.innerHTML += `<div class="text-[8px] font-bold text-blue-500">Σ${td.toFixed(1)}</div>`;
-                if (ta > 0) info.innerHTML += `<div class="text-[8px] font-bold text-green-600 font-black">👤${ta}</div>`;
+                const totalD = dayData.reduce((s, r) => s + (Number(r.distance) || 0), 0);
+                if (totalD > 0) content.innerHTML += `<div class="text-[8px] font-bold text-blue-500">${totalD.toFixed(1)}k</div>`;
             }
-            cell.append(dayNum, info);
+
+            cell.append(dNum, content);
             container.appendChild(cell);
         }
     }
@@ -266,22 +274,26 @@
                 if (r.attended) stats[r.name].a += 1;
             }
         });
-        const dRank = Object.entries(stats).sort((a, b) => b[1].d - a[1].d).filter(x => x[1].d > 0).slice(0, 5);
-        const aRank = Object.entries(stats).sort((a, b) => b[1].a - a[1].a).filter(x => x[1].a > 0).slice(0, 5);
+
+        const dRank = Object.entries(stats).sort((a,b) => b[1].d - a[1].d).filter(x => x[1].d > 0).slice(0, 5);
+        const aRank = Object.entries(stats).sort((a,b) => b[1].a - a[1].a).filter(x => x[1].a > 0).slice(0, 5);
+
         const dCont = document.getElementById('ranking-distance');
-        dCont.innerHTML = dRank.length ? "" : `<div class="text-xs text-gray-300 italic text-center py-4">기록 없음</div>`;
-        dRank.forEach(([n, v], i) => dCont.innerHTML += rankHTML(i, n, v.d.toFixed(1) + ' km', 'blue'));
+        dCont.innerHTML = dRank.length ? "" : "<p class='text-center text-gray-300 text-xs py-4'>데이터가 없습니다.</p>";
+        dRank.forEach(([n, v], i) => dCont.innerHTML += rankItem(i, n, v.d.toFixed(1)+'km', 'blue'));
+
         const aCont = document.getElementById('ranking-attendance');
-        aCont.innerHTML = aRank.length ? "" : `<div class="text-xs text-gray-300 italic text-center py-4">출석 없음</div>`;
-        aRank.forEach(([n, v], i) => aCont.innerHTML += rankHTML(i, n, v.a + ' 회', 'green'));
+        aCont.innerHTML = aRank.length ? "" : "<p class='text-center text-gray-300 text-xs py-4'>데이터가 없습니다.</p>";
+        aRank.forEach(([n, v], i) => aCont.innerHTML += rankItem(i, n, v.a+'회', 'green'));
     }
 
-    function rankHTML(i, name, val, color) {
-        const bg = i === 0 ? (color === 'blue' ? 'bg-blue-600 text-white shadow-md' : 'bg-green-600 text-white shadow-md') : 'bg-white border border-gray-100 text-gray-700';
-        return `<div class="flex items-center p-4 rounded-2xl ${bg} transition-all mb-2">
-            <span class="w-8 font-black text-sm">${i+1}</span>
-            <span class="flex-grow font-bold text-sm">${name}</span>
-            <span class="font-black text-sm">${val}</span>
+    function rankItem(i, n, v, c) {
+        const isFirst = i === 0;
+        const colorClass = c === 'blue' ? (isFirst ? 'bg-blue-600 text-white' : 'bg-white border-blue-100') : (isFirst ? 'bg-green-600 text-white' : 'bg-white border-green-100');
+        return `<div class="flex items-center p-4 rounded-2xl border ${colorClass} mb-2 shadow-sm">
+            <span class="w-8 font-black">${i+1}</span>
+            <span class="flex-grow font-bold">${n}</span>
+            <span class="font-black">${v}</span>
         </div>`;
     }
 
@@ -291,16 +303,15 @@
         if (!name) { box.classList.add('hidden'); return; }
         const prefix = `${currentViewDate.getFullYear()}-${String(currentViewDate.getMonth() + 1).padStart(2, '0')}`;
         const my = allRecords.filter(r => r.name === name && r.date.startsWith(prefix));
-        document.getElementById('my-month-dist').textContent = my.reduce((a, b) => a + (Number(b.distance) || 0), 0).toFixed(1);
+        document.getElementById('my-month-dist').textContent = my.reduce((s, r) => s + (Number(r.distance) || 0), 0).toFixed(1);
         document.getElementById('my-month-attend').textContent = my.filter(r => r.attended).length;
         box.classList.remove('hidden');
     }
 
-    let activeDate = "";
     window.openForm = (date, special) => {
-        if (!userSelect.value) { alert("상단에서 이름을 먼저 선택해주세요!"); return; }
+        if (!userSelect.value) { alert("먼저 이름을 선택해주세요!"); return; }
         activeDate = date;
-        const [y, m, d] = date.split('-');
+        const [, m, d] = date.split('-');
         document.getElementById('form-date-title').textContent = `${parseInt(m)}월 ${parseInt(d)}일 기록`;
         document.getElementById('attendance-box').classList.toggle('hidden', !special);
         const rec = allRecords.find(r => r.date === date && r.name === userSelect.value);
@@ -310,7 +321,11 @@
     };
 
     window.closeForm = () => document.getElementById('entry-form').classList.add('hidden');
-    userSelect.onchange = () => { localStorage.setItem('srt_user', userSelect.value); updateUI(); };
+    userSelect.onchange = () => { localStorage.setItem('srt_user', userSelect.value); renderAll(); };
+
+    // 시작
+    bootstrap();
+    renderAll();
 </script>
 
 </body>
