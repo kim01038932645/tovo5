@@ -37,14 +37,12 @@
     </header>
 
     <main class="flex-grow p-4 space-y-6 overflow-y-auto pb-24">
-        <!-- Month Nav -->
         <div class="flex justify-between items-center bg-gray-100 p-3 rounded-2xl">
             <button onclick="window.changeMonth(-1)" class="p-2 text-blue-600 font-black text-xl active:opacity-50">◀</button>
-            <span id="displayMonth" class="text-lg font-black text-blue-900">2026년 1월</span>
+            <span id="displayMonth" class="text-lg font-black text-blue-900 tracking-tight">로드 중...</span>
             <button onclick="window.changeMonth(1)" class="p-2 text-blue-600 font-black text-xl active:opacity-50">▶</button>
         </div>
 
-        <!-- Calendar Container -->
         <div class="space-y-4">
             <div class="grid grid-cols-7 text-center text-[10px] font-black text-gray-400 uppercase tracking-tighter">
                 <div class="text-red-500">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-blue-600">Sat</div>
@@ -52,7 +50,6 @@
             <div id="calendar-days" class="grid grid-cols-7 gap-2"></div>
         </div>
 
-        <!-- Rankings Section -->
         <div class="pt-6 border-t border-gray-100 space-y-8">
             <div>
                 <h2 class="text-lg font-black text-blue-900 mb-4 flex items-center gap-2">🔥 거리 TOP 5</h2>
@@ -65,10 +62,10 @@
         </div>
     </main>
 
-    <!-- Modal Form -->
+    <!-- Entry Form -->
     <div id="entry-form" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]">
         <div class="bg-white rounded-[32px] p-8 w-full max-w-xs shadow-2xl">
-            <h3 id="form-date-title" class="text-xl font-black mb-6 text-center">기록 입력</h3>
+            <h3 id="form-date-title" class="text-xl font-black mb-6 text-center text-gray-800">기록 입력</h3>
             <div id="attendance-box" class="mb-6 hidden">
                 <label class="flex items-center justify-between bg-blue-50 p-4 rounded-2xl cursor-pointer">
                     <span class="font-bold text-blue-900 text-sm">공식 모임 출석</span>
@@ -78,29 +75,27 @@
             <div class="mb-8 text-center">
                 <label class="block text-xs font-bold text-gray-400 mb-2">러닝 거리 (km)</label>
                 <input type="number" id="distance-input" step="0.1" inputmode="decimal" placeholder="0.0" 
-                       class="w-full text-5xl font-black text-center text-blue-600 border-b-4 border-gray-100 focus:border-blue-500 py-2 outline-none">
+                       class="w-full text-5xl font-black text-center text-blue-600 border-b-4 border-gray-100 focus:border-blue-500 py-2 outline-none bg-transparent">
             </div>
             <div class="flex gap-3">
                 <button onclick="window.closeForm()" class="flex-1 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold">취소</button>
-                <button id="saveBtn" onclick="window.saveRecord()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black">저장</button>
+                <button id="saveBtn" onclick="window.saveRecord()" class="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">저장</button>
             </div>
         </div>
     </div>
 
-    <!-- DB Status Footer -->
     <footer class="p-4 bg-gray-50 text-[10px] text-gray-400 text-center border-t border-gray-100">
-        SRT D-Team Cloud Connection System<br>
-        <span id="dbStatus" class="font-bold text-blue-400">시스템 초기화 중...</span>
+        SRT D-Team Attendance System<br>
+        <span id="dbStatus" class="font-bold text-blue-400">서버 연결 대기 중...</span>
     </footer>
 </div>
 
 <script type="module">
-    // Firebase 모듈 동적 로드 및 동기화 보장
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, collection, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // --- 앱 상태 관리 ---
+    // --- State & Variables ---
     const members = ["강동현", "강동훈", "송채한", "김미화", "김재산", "김찬석", "김한나", "류지찬", "박성환", "박종봉", "소병득", "서정화", "신영섭", "안지훈", "오한천", "이승준", "이용구", "정덕수", "주효석", "서인수", "박창선", "김병식"].sort();
     let currentViewDate = new Date(); currentViewDate.setDate(1);
     let allRecords = [];
@@ -108,89 +103,84 @@
     let activeDate = "";
     let db = null;
     let auth = null;
-    let appId = 'srt-d-team-final';
-
-    // --- UI 요소 ---
-    const userSelect = document.getElementById('userSelect');
+    
+    // UI References
     const statusText = document.getElementById('dbStatus');
     const statusDot = document.getElementById('topStatus');
+    const userSelect = document.getElementById('userSelect');
 
-    // 멤버 로드
+    // Setup User List
     members.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m; opt.textContent = m;
         userSelect.appendChild(opt);
     });
-    const savedUser = localStorage.getItem('srt_user_name');
-    if (savedUser) userSelect.value = savedUser;
+    if (localStorage.getItem('srt_user_name')) userSelect.value = localStorage.getItem('srt_user_name');
 
-    // --- 핵심: 서버 연결 부트스트랩 ---
-    async function initializeSystem() {
-        statusText.textContent = "서버 설정(Config) 확인 중...";
-        
+    // --- Firebase Initialization Flow ---
+    async function startApp() {
+        // 1. Wait for Firebase Config
         let config = null;
-        let attempts = 0;
-
-        // 설정값이 주입될 때까지 최대 10초간 대기
-        while (!config && attempts < 100) {
+        for (let i = 0; i < 50; i++) {
             if (window.__firebase_config) {
-                try {
-                    config = JSON.parse(window.__firebase_config);
-                    appId = window.__app_id || appId;
-                } catch (e) { console.error("JSON Parse Error", e); }
+                config = JSON.parse(window.__firebase_config);
+                break;
             }
-            if (config) break;
-            attempts++;
             await new Promise(r => setTimeout(r, 100));
         }
 
         if (!config) {
-            statusText.textContent = "오류: 서버 설정을 로드할 수 없습니다. (새로고침 권장)";
-            statusDot.className = "status-dot bg-red-500 border border-white";
+            statusText.textContent = "연결 오류: 서버 설정값이 주입되지 않았습니다.";
             return;
         }
 
+        // 2. Initialize Firebase
         try {
             const app = initializeApp(config);
             auth = getAuth(app);
             db = getFirestore(app);
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
 
-            statusText.textContent = "인증 서버 연결 중...";
+            // 3. Strict Authentication First
+            statusText.textContent = "사용자 인증 중...";
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
 
-            onAuthStateChanged(auth, async (user) => {
+            // 4. On Auth State Changed -> Start Sync
+            onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user;
                     statusDot.className = "status-dot bg-green-500 border border-white";
-                    statusText.textContent = "실시간 데이터베이스 연결됨";
-                    startDataSync();
+                    statusText.textContent = "서버 연결 성공 (실시간 모드)";
+                    initRealtimeSync(appId);
                 } else {
-                    try {
-                        if (window.__initial_auth_token) {
-                            await signInWithCustomToken(auth, window.__initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (e) {
-                        statusText.textContent = "인증 오류: " + e.code;
-                    }
+                    statusDot.className = "status-dot bg-red-500 border border-white";
+                    statusText.textContent = "인증 세션 만료";
                 }
             });
-        } catch (err) {
-            statusText.textContent = "초기화 오류: " + err.message;
+
+        } catch (e) {
+            statusText.textContent = "서버 초기화 실패: " + e.message;
         }
     }
 
-    function startDataSync() {
+    function initRealtimeSync(appId) {
+        // 규칙 1 준수: /artifacts/{appId}/public/data/records
         const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'records');
+        
         onSnapshot(colRef, (snapshot) => {
             allRecords = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             renderAll();
         }, (err) => {
-            statusText.textContent = "동기화 권한 오류: " + err.code;
+            statusText.textContent = "데이터 동기화 실패: " + err.code;
+            console.error(err);
         });
     }
 
-    // --- 비즈니스 로직 ---
+    // --- UI Logic ---
     function renderAll() {
         renderCalendar();
         renderRanking();
@@ -269,8 +259,9 @@
     }
 
     function rankItem(i, n, v, c) {
-        const bg = c === 'blue' ? (i===0?'bg-blue-600 text-white':'bg-white border-blue-50') : (i===0?'bg-green-600 text-white':'bg-white border-green-50');
-        return `<div class="flex items-center p-3 rounded-2xl border ${bg} mb-1 shadow-sm">
+        const isFirst = i === 0;
+        const bg = c === 'blue' ? (isFirst?'bg-blue-600 text-white shadow-blue-200':'bg-white border-blue-50') : (isFirst?'bg-green-600 text-white shadow-green-200':'bg-white border-green-50');
+        return `<div class="flex items-center p-3 rounded-2xl border ${bg} mb-1 shadow-sm transition-all">
             <span class="w-6 font-black text-[10px] opacity-70">${i+1}</span>
             <span class="flex-grow font-bold text-xs">${n}</span>
             <span class="font-black text-xs">${v}</span>
@@ -288,7 +279,7 @@
         box.classList.remove('hidden');
     }
 
-    // --- 창 제어 (Window 객체에 할당하여 HTML에서 접근 가능하게 함) ---
+    // --- Global Actions ---
     window.changeMonth = (dir) => {
         currentViewDate.setMonth(currentViewDate.getMonth() + dir);
         renderAll();
@@ -309,10 +300,13 @@
     window.closeForm = () => document.getElementById('entry-form').classList.add('hidden');
 
     window.saveRecord = async () => {
-        if (!currentUser || !db) { alert("서버와 연결되지 않았습니다."); return; }
+        if (!currentUser || !db) return;
         const name = userSelect.value;
         const dist = parseFloat(document.getElementById('distance-input').value) || 0;
         const attended = document.getElementById('attend-check').checked;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'srt-d-team-v1';
+        
+        // 경로 규칙 준수
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'records', `${name}_${activeDate}`);
         
         const btn = document.getElementById('saveBtn');
@@ -323,7 +317,7 @@
             else await setDoc(docRef, { name, date: activeDate, distance: dist, attended, ts: Date.now() });
             window.closeForm();
         } catch (e) {
-            alert("저장 실패: " + e.code);
+            alert("저장 중 서버 오류: " + e.code);
         } finally {
             btn.disabled = false; btn.textContent = "저장";
         }
@@ -334,8 +328,8 @@
         renderAll();
     };
 
-    // 시스템 시작
-    initializeSystem();
+    // --- Execution ---
+    startApp();
     renderAll();
 </script>
 
